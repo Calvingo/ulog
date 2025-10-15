@@ -1,0 +1,39 @@
+CREATE TABLE IF NOT EXISTS users (
+    uid BIGINT AUTO_INCREMENT PRIMARY KEY,
+    phone VARCHAR(32) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    description VARCHAR(512),
+    ai_summary VARCHAR(1024),
+    status TINYINT NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    last_failed_at DATETIME,
+    locked_until DATETIME
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS contacts (
+    cid BIGINT AUTO_INCREMENT PRIMARY KEY,
+    owner_uid BIGINT NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    description VARCHAR(1024),
+    ai_summary VARCHAR(2048),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0,
+    CONSTRAINT fk_contacts_owner FOREIGN KEY (owner_uid) REFERENCES users (uid)
+) ENGINE = InnoDB;
+
+CREATE INDEX idx_contacts_owner ON contacts (owner_uid);
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token VARCHAR(512) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    revoked TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users (uid)
+) ENGINE = InnoDB;

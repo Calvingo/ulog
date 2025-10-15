@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "Contacts AI Summary (Spring Boot + DeepSeek)",
+    "_postman_id": "ee2f231c-f63a-436f-9fca-315e5c49f79a",
+    "description": "Postman collection to test phone login, create contact with free-form description, and verify ai_summary generation via DeepSeek.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0) Register (phone + password)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+15551234567\",\n  \"password\": \"StrongPass1\",\n  \"name\": \"Test User\"\n}"
+        },
+        "description": "Registers a new user with phone & password. If you already have a user, you can skip this."
+      },
+      "response": []
+    },
+    {
+      "name": "1) Login (get JWT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json && json.data && json.data.accessToken) {",
+              "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+              "  console.log('accessToken set to collection variables');",
+              "} else if (json && json.accessToken) {",
+              "  pm.collectionVariables.set('accessToken', json.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+15551234567\",\n  \"password\": \"StrongPass1\"\n}"
+        },
+        "description": "Logs in with phone & password. Test script saves accessToken to a collection variable."
+      },
+      "response": []
+    },
+    {
+      "name": "2) Create Contact (generate ai_summary)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json ? pm.response.json() : {};",
+              "let cid = json?.data?.cid || json?.cid;",
+              "if (cid) { pm.collectionVariables.set('cid', cid); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contacts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "contacts"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"\\u5f20\\u4e09\",\n  \"description\": \"1996\\u5e74\\u751f\\uff0cENFJ\\uff0c\\u559c\\u6b22\\u6f5c\\u6c34\\u548c\\u732b\\uff1b\\u4e0b\\u5468\\u4e09\\u5728\\u4e0a\\u6d77\\uff0c\\u8003\\u8651\\u5408\\u4f5c\\u505a\\u64ad\\u5ba2\\u3002\"\n}"
+        },
+        "description": "Creates a contact, stores original description, calls DeepSeek to generate ai_summary, and returns the contact (with ai_summary when successful)."
+      },
+      "response": []
+    },
+    {
+      "name": "3) Get Contact by CID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contacts/{{cid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "contacts",
+            "{{cid}}"
+          ]
+        },
+        "description": "Fetches the contact to verify ai_summary is persisted."
+      },
+      "response": []
+    },
+    {
+      "name": "4) AI Ask (optional quick check)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ai/ask",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "ai",
+            "ask"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"prompt\": \"\\u7528\\u4e09\\u70b9\\u603b\\u7ed3\\uff1aENFJ \\u559c\\u6b22\\u6f5c\\u6c34\\u548c\\u732b\\uff0c\\u4e0b\\u5468\\u4e09\\u5728\\u4e0a\\u6d77\\uff0c\\u8003\\u8651\\u5408\\u4f5c\\u64ad\\u5ba2\"\n}"
+        },
+        "description": "Calls the DeepSeek /ask endpoint to ensure AI connectivity works independently."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "cid",
+      "value": ""
+    }
+  ]
+}
