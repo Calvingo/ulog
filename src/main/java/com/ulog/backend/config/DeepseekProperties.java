@@ -10,6 +10,7 @@ public class DeepseekProperties {
     private String baseUrl;
     private String apiKey;
     private String model;
+    private String reasonerModel;
     private int timeoutMs = 15000;
     private boolean enableLogging;
 
@@ -35,6 +36,14 @@ public class DeepseekProperties {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getReasonerModel() {
+        return reasonerModel;
+    }
+
+    public void setReasonerModel(String reasonerModel) {
+        this.reasonerModel = reasonerModel;
     }
 
     public int getTimeoutMs() {

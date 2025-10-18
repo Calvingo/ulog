@@ -1,0 +1,1686 @@
+{
+  "info": {
+    "name": "Ulog Backend - 完整API集合",
+    "description": "整合了认证、用户管理、联系人管理、对话式信息收集和用户自我信息收集的完整API测试集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contactId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userSessionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 认证模块",
+      "description": "用户注册、登录、刷新token、登出",
+      "item": [
+        {
+          "name": "1) 注册用户",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ 用户注册成功');",
+                  "    const response = pm.response.json();",
+                  "    console.log('用户ID:', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1234567890\",\n  \"password\": \"Test123456\",\n  \"name\": \"测试用户\",\n  \"smsCode\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "注册新用户"
+          }
+        },
+        {
+          "name": "2) 登录获取Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.tokens) {",
+                  "        pm.collectionVariables.set('accessToken', response.data.tokens.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', response.data.tokens.refreshToken);",
+                  "        console.log('✅ 登录成功，Token已保存');",
+                  "        console.log('Access Token:', response.data.tokens.accessToken.substring(0, 20) + '...');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1234567890\",\n  \"password\": \"Test123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "用户登录并获取JWT token"
+          }
+        },
+        {
+          "name": "3) 刷新Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "使用refresh token刷新access token"
+          }
+        },
+        {
+          "name": "4) 登出",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "用户登出并失效refresh token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 用户管理",
+      "description": "用户信息管理相关API",
+      "item": [
+        {
+          "name": "1) 获取当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "获取当前登录用户的信息"
+          }
+        },
+        {
+          "name": "2) 更新用户信息",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"更新后的用户名\",\n  \"description\": \"更新后的用户描述\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "更新当前用户信息"
+          }
+        },
+        {
+          "name": "3) 修改密码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Test123456\",\n  \"newPassword\": \"NewPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me", "password"]
+            },
+            "description": "修改用户密码"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📞 传统联系人管理",
+      "description": "传统的CRUD联系人管理API",
+      "item": [
+        {
+          "name": "1) 创建联系人",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.collectionVariables.set('contactId', response.data.id);",
+                  "        console.log('✅ 联系人创建成功，ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"张三\",\n  \"description\": \"工作伙伴，喜欢喝咖啡，下周三在上海\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts"]
+            },
+            "description": "创建新联系人"
+          }
+        },
+        {
+          "name": "2) 获取所有联系人",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts"]
+            },
+            "description": "获取当前用户的所有联系人"
+          }
+        },
+        {
+          "name": "3) 获取联系人详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts", "{{contactId}}"]
+            },
+            "description": "获取指定联系人的详细信息"
+          }
+        },
+        {
+          "name": "4) 更新联系人",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"张三 (更新)\",\n  \"description\": \"更新后的描述：工作伙伴，喜欢喝咖啡和茶，下周三在上海，考虑合作播客\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts", "{{contactId}}"]
+            },
+            "description": "更新指定联系人的信息"
+          }
+        },
+        {
+          "name": "5) 删除联系人",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts", "{{contactId}}"]
+            },
+            "description": "删除指定联系人（软删除）"
+          }
+        },
+        {
+          "name": "6) 预览Aibook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactDescriptionOverride\": null,\n  \"userDescriptionOverride\": null,\n  \"language\": \"zh\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}/aibook/preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts", "{{contactId}}", "aibook", "preview"]
+            },
+            "description": "为联系人生成AI关系洞察（aibook）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 对话式信息收集",
+      "description": "智能对话收集联系人信息，支持多轮对话、信息修正、问答模式",
+      "item": [
+        {
+          "name": "开始收集",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.sessionId) {",
+                  "        pm.collectionVariables.set('sessionId', response.data.sessionId);",
+                  "        console.log('✅ 对话会话开始:', response.data.sessionId);",
+                  "        console.log('📝 第一个问题:', response.data.firstQuestion);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactName\": \"张三\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "start"]
+            },
+            "description": "开始一个新的信息收集会话"
+          }
+        },
+        {
+          "name": "回答问题-第1轮",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📝 下一个问题:', response.data.nextQuestion);",
+                  "    console.log('📊 进度:', response.data.progress + '%');",
+                  "    console.log('🎯 当前维度:', response.data.currentDimension);",
+                  "    ",
+                  "    if (response.data.isCompleted && response.data.contact) {",
+                  "        pm.collectionVariables.set('contactId', response.data.contact.id);",
+                  "        console.log('✅ 联系人创建成功:', response.data.contact.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"30岁左右\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "回答第一个问题：年龄"
+          }
+        },
+        {
+          "name": "回答问题-第2轮",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"是个产品经理，在互联网公司工作\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "回答职业相关问题"
+          }
+        },
+        {
+          "name": "修正信息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"不对，他其实是35岁\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "测试信息修正功能"
+          }
+        },
+        {
+          "name": "提前结束",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data.isCompleted && response.data.contact) {",
+                  "        pm.collectionVariables.set('contactId', response.data.contact.id);",
+                  "        console.log('✅ 联系人创建成功:', response.data.contact);",
+                  "        console.log('💬 完成消息:', response.data.completionMessage);",
+                  "    } else if (response.data.isConfirmingEnd) {",
+                  "        console.log('❓ 正在确认结束...');",
+                  "    } else if (response.data.needsMinimumInfo) {",
+                  "        console.log('⚠️ 需要补充最低信息');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"就这些吧，不想继续了\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "测试提前结束功能"
+          }
+        },
+        {
+          "name": "查看进度",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "progress"]
+            },
+            "description": "查看当前收集进度"
+          }
+        },
+        {
+          "name": "放弃会话",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/abandon",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "abandon"]
+            },
+            "description": "放弃当前会话"
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 问答模式",
+      "description": "联系人创建后的问答交互",
+      "item": [
+        {
+          "name": "智能问答-第1轮",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📝 QA Response:', response.data);",
+                  "    ",
+                  "    if (response.data.needsMoreInfo) {",
+                  "        console.log('⚠️ 需要补充信息:', response.data.supplementQuestion);",
+                  "        console.log('🔍 分析结果:', response.data.analysis);",
+                  "    } else {",
+                  "        console.log('✅ 直接回答:', response.data.answer);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"张三和我的关系如何？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "message"]
+            },
+            "description": "测试智能问答 - 可能需要补充信息的问题"
+          }
+        },
+        {
+          "name": "补充信息",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 补充信息完成:', response.data.answer);",
+                  "    console.log('📊 是否为补充回答:', response.data.isSupplementAnswer);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplementInfo\": \"我们是大学同学，经常一起讨论技术问题，关系很好\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/supplement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "supplement"]
+            },
+            "description": "补充信息 - 提供额外信息后生成最终回答"
+          }
+        },
+        {
+          "name": "智能问答-第2轮",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 直接回答:', response.data.answer);",
+                  "    console.log('📊 是否需要补充信息:', response.data.needsMoreInfo);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"张三的职业是什么？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "message"]
+            },
+            "description": "测试智能问答 - 不需要补充信息的问题"
+          }
+        },
+        {
+          "name": "智能问答-第3轮",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"我们平时是如何互动的？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "message"]
+            },
+            "description": "测试智能问答 - 可能需要补充信息的问题"
+          }
+        },
+        {
+          "name": "生成AI总结",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/generate-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "generate-summary"]
+            },
+            "description": "为联系人生成AI总结"
+          }
+        },
+        {
+          "name": "结束会话",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "end"]
+            },
+            "description": "结束问答会话"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 完整流程测试",
+      "description": "端到端的完整测试流程",
+      "item": [
+        {
+          "name": "完整流程-开始对话",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('sessionId', response.data.sessionId);",
+                  "    console.log('🚀 完整流程开始，Session ID:', response.data.sessionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactName\": \"李四\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "start"]
+            }
+          }
+        },
+        {
+          "name": "完整流程-多轮对话",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// 模拟多轮对话",
+                  "const answers = [",
+                  "    '28岁',",
+                  "    '软件工程师，在创业公司',",
+                  "    '大学同学',",
+                  "    '我们每周都会聊天，关系很好',",
+                  "    '就这些吧'",
+                  "];",
+                  "",
+                  "const currentRound = pm.collectionVariables.get('currentRound') || 0;",
+                  "pm.request.body.raw = JSON.stringify({",
+                  "    message: answers[currentRound]",
+                  "});",
+                  "pm.collectionVariables.set('currentRound', currentRound + 1);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Response:', response.data);",
+                  "    ",
+                  "    if (response.data.isCompleted) {",
+                  "        pm.collectionVariables.set('contactId', response.data.contact.id);",
+                  "        console.log('✅ 联系人创建成功！');",
+                  "        pm.collectionVariables.set('currentRound', 0);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"动态设置\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "多次运行此请求以模拟完整对话流程"
+          }
+        },
+        {
+          "name": "完整流程-查看创建的联系人",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts", "{{contactId}}"]
+            },
+            "description": "查看通过对话创建的联系人"
+          }
+        },
+        {
+          "name": "完整流程-QA智能问答",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🤖 QA智能问答响应:', response.data);",
+                  "    ",
+                  "    if (response.data.needsMoreInfo) {",
+                  "        console.log('⚠️ 需要补充信息，请运行补充信息请求');",
+                  "    } else {",
+                  "        console.log('✅ 直接回答完成');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"李四和我的关系如何？我们平时是怎么相处的？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "message"]
+            },
+            "description": "完整流程测试 - QA智能问答"
+          }
+        },
+        {
+          "name": "完整流程-补充信息",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 补充信息完成，最终回答:', response.data.answer);",
+                  "    console.log('📊 是否为补充回答:', response.data.isSupplementAnswer);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplementInfo\": \"我们是同事关系，平时经常一起吃饭聊天，也会讨论工作上的问题，关系比较融洽\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/supplement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "supplement"]
+            },
+            "description": "完整流程测试 - 补充信息"
+          }
+        },
+        {
+          "name": "完整流程-生成AI总结",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🎯 AI总结生成完成:', response.data);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/generate-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "generate-summary"]
+            },
+            "description": "完整流程测试 - 生成AI总结"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 用户自我信息收集",
+      "description": "用户通过对话收集自己的个人信息，更新User.description",
+      "item": [
+        {
+          "name": "开始用户自我收集",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.sessionId) {",
+                  "        pm.collectionVariables.set('userSessionId', response.data.sessionId);",
+                  "        console.log('✅ 用户自我信息收集会话开始:', response.data.sessionId);",
+                  "        console.log('📝 第一个问题:', response.data.firstQuestion);",
+                  "        console.log('💬 提示:', response.data.message);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "start"]
+            },
+            "description": "开始用户自我信息收集会话"
+          }
+        },
+        {
+          "name": "回答问题-第1轮(年龄)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📝 下一个问题:', response.data.nextQuestion);",
+                  "    console.log('📊 进度:', response.data.progress + '%');",
+                  "    console.log('🎯 当前维度:', response.data.currentDimension);",
+                  "    ",
+                  "    if (response.data.isCompleted) {",
+                  "        console.log('✅ 信息收集完成!');",
+                  "        console.log('📄 更新后的描述:', response.data.updatedDescription);",
+                  "        console.log('🎉 可以进入QA模式了!');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"30岁\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "回答第一个问题：年龄"
+          }
+        },
+        {
+          "name": "回答问题-第2轮(职业)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"我是一名产品经理，在互联网公司工作\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "回答职业相关问题"
+          }
+        },
+        {
+          "name": "回答问题-第3轮(教育)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"本科毕业，计算机专业\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "回答教育背景问题"
+          }
+        },
+        {
+          "name": "修正信息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"不对，我其实是32岁\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "测试信息修正功能"
+          }
+        },
+        {
+          "name": "提前结束",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data.isCompleted) {",
+                  "        console.log('✅ 用户信息收集完成!');",
+                  "        console.log('📄 自我描述:', response.data.updatedDescription);",
+                  "        console.log('💬 完成消息:', response.data.completionMessage);",
+                  "        console.log('🎯 下一步:', response.data.nextMode);",
+                  "    } else if (response.data.isConfirmingEnd) {",
+                  "        console.log('❓ 正在确认结束...');",
+                  "    } else if (response.data.needsMinimumInfo) {",
+                  "        console.log('⚠️ 需要补充最低信息');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"就这些吧，结束问卷\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "测试提前结束功能"
+          }
+        },
+        {
+          "name": "确认结束",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data.isCompleted) {",
+                  "        console.log('✅ 用户信息收集完成!');",
+                  "        console.log('📄 自我描述:', response.data.updatedDescription);",
+                  "        console.log('🎯 进入QA模式:', response.data.nextMode);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"是\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "确认结束信息收集"
+          }
+        },
+        {
+          "name": "查看进度",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "progress"]
+            },
+            "description": "查看当前收集进度"
+          }
+        },
+        {
+          "name": "放弃会话",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/abandon",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "abandon"]
+            },
+            "description": "放弃当前会话"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤔 用户自我QA模式",
+      "description": "用户信息收集完成后，基于自我描述进行问答",
+      "item": [
+        {
+          "name": "自我QA-第1轮",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📝 QA Response:', response.data);",
+                  "    ",
+                  "    if (response.data.needsMoreInfo) {",
+                  "        console.log('⚠️ 需要补充信息:', response.data.followUpQuestion);",
+                  "    } else {",
+                  "        console.log('✅ 直接回答:', response.data.answer);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"我的优势是什么？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "message"]
+            },
+            "description": "测试自我问答"
+          }
+        },
+        {
+          "name": "自我QA-第2轮",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"分析我的性格特点\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "message"]
+            },
+            "description": "测试自我问答 - 性格分析"
+          }
+        },
+        {
+          "name": "自我QA-第3轮",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"给我一些个人发展建议\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "message"]
+            },
+            "description": "测试自我问答 - 个人发展建议"
+          }
+        },
+        {
+          "name": "补充信息",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 补充信息完成:', response.data.answer);",
+                  "    console.log('📊 状态:', response.data.status);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplementInfo\": \"我擅长Python和Java编程，喜欢解决复杂的技术问题，团队协作能力强\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/supplement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "supplement"]
+            },
+            "description": "补充信息 - 提供额外信息"
+          }
+        },
+        {
+          "name": "生成AI总结",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🎯 AI总结:', response.data);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/generate-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "generate-summary"]
+            },
+            "description": "为用户自我描述生成AI总结"
+          }
+        },
+        {
+          "name": "结束会话",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "end"]
+            },
+            "description": "结束用户自我QA会话"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 用户自我完整流程测试",
+      "description": "端到端的用户自我信息收集和QA完整流程",
+      "item": [
+        {
+          "name": "完整流程-开始用户自我收集",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('userSessionId', response.data.sessionId);",
+                  "    console.log('🚀 用户自我信息收集开始，Session ID:', response.data.sessionId);",
+                  "    console.log('📝 第一个问题:', response.data.firstQuestion);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "start"]
+            }
+          }
+        },
+        {
+          "name": "完整流程-多轮对话",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// 模拟多轮对话",
+                  "const answers = [",
+                  "    '32岁',",
+                  "    '产品经理，互联网创业公司',",
+                  "    '硕士，北京大学计算机专业',",
+                  "    '北京',",
+                  "    '性格开朗，喜欢与人交流',",
+                  "    '就这些吧'",
+                  "];",
+                  "",
+                  "const currentRound = pm.collectionVariables.get('userCurrentRound') || 0;",
+                  "pm.request.body.raw = JSON.stringify({",
+                  "    message: answers[currentRound]",
+                  "});",
+                  "pm.collectionVariables.set('userCurrentRound', currentRound + 1);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Progress:', response.data.progress + '%');",
+                  "    console.log('Response:', response.data);",
+                  "    ",
+                  "    if (response.data.isCompleted) {",
+                  "        console.log('✅ 用户信息收集完成！');",
+                  "        console.log('📄 自我描述:', response.data.updatedDescription);",
+                  "        pm.collectionVariables.set('userCurrentRound', 0);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"动态设置\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/collect/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "collect", "{{userSessionId}}", "message"]
+            },
+            "description": "多次运行此请求以模拟完整对话流程"
+          }
+        },
+        {
+          "name": "完整流程-查看用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "查看更新后的用户信息"
+          }
+        },
+        {
+          "name": "完整流程-自我QA问答",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🤖 自我QA问答响应:', response.data);",
+                  "    ",
+                  "    if (response.data.needsMoreInfo) {",
+                  "        console.log('⚠️ 需要补充信息，请运行补充信息请求');",
+                  "    } else {",
+                  "        console.log('✅ 直接回答完成');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"基于我的背景，给我一些职业发展建议\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "message"]
+            },
+            "description": "完整流程测试 - 自我QA问答"
+          }
+        },
+        {
+          "name": "完整流程-补充信息",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 补充信息完成，答案:', response.data.answer);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplementInfo\": \"我有5年产品经验，擅长B端产品设计，希望未来向产品总监方向发展\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/supplement",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "supplement"]
+            },
+            "description": "完整流程测试 - 补充信息"
+          }
+        },
+        {
+          "name": "完整流程-生成AI总结",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🎯 AI总结生成完成:', response.data);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-conversation/qa/{{userSessionId}}/generate-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "generate-summary"]
+            },
+            "description": "完整流程测试 - 生成AI总结"
+          }
+        }
+      ]
+    }
+  ]
+}

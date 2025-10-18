@@ -32,6 +32,9 @@ public class Contact {
 
     @Column(name = "description", length = 1024)
     private String description;
+    
+    @Column(name = "self_value", length = 50)
+    private String selfValue;
 
     @Column(name = "ai_summary", length = 2048)
     private String aiSummary;
@@ -92,6 +95,14 @@ public class Contact {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+    
+    public String getSelfValue() {
+        return selfValue;
+    }
+    
+    public void setSelfValue(String selfValue) {
+        this.selfValue = selfValue;
     }
 
     public String getAiSummary() {

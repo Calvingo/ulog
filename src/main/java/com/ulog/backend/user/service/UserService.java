@@ -62,6 +62,27 @@ public class UserService {
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
     }
+    
+    /**
+     * 更新用户描述（用于自我信息收集）
+     */
+    @Transactional
+    public void updateUserDescription(Long userId, String description) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
+        user.setDescription(description);
+        userRepository.save(user);
+    }
+    
+    /**
+     * 获取用户描述
+     */
+    @Transactional(readOnly = true)
+    public String getUserDescription(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
+        return user.getDescription();
+    }
 
     private UserResponse mapToResponse(User user, boolean maskPhone) {
         String phoneValue = maskPhone ? maskPhone(user.getPhone()) : user.getPhone();
