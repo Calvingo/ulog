@@ -96,6 +96,19 @@ public class ContactService {
         return new ContactResponse(contact.getId(), contact.getName(), contact.getDescription(), contact.getAiSummary(), contact.getCreatedAt(), contact.getUpdatedAt());
     }
 
+    @Transactional
+    public void updateSelfValue(Long contactId, String selfValue) {
+        log.info("Updating self value for contact {}: {}", contactId, selfValue);
+        
+        Contact contact = contactRepository.findById(contactId)
+            .orElseThrow(() -> new RuntimeException("Contact not found: " + contactId));
+        
+        contact.setSelfValue(selfValue);
+        contactRepository.save(contact);
+        
+        log.info("Successfully updated self value for contact {}", contactId);
+    }
+
     private void populateSummaryIfNeeded(Contact contact, String description, String requestedSummary) {
         if (requestedSummary != null && !requestedSummary.isBlank()) {
             contact.setAiSummary(requestedSummary);

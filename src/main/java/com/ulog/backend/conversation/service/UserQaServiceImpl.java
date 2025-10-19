@@ -224,6 +224,8 @@ public class UserQaServiceImpl implements UserQaService {
         ));
         request.setTemperature(0.7);
         
+        // 使用 reasoner 模型进行问答
+        request.setModel(deepseekProperties.getReasonerModel());
         ChatCompletionResponse response = deepseekClient.chat(request).block();
         if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
             throw new BadRequestException("AI服务暂时不可用");
@@ -318,13 +320,14 @@ public class UserQaServiceImpl implements UserQaService {
         
         // Step 6: 调用Deepseek
         ChatCompletionRequest request = new ChatCompletionRequest();
-        request.setModel(deepseekProperties.getReasonerModel());
         request.setMessages(messages);
         request.setTemperature(0.7);
         
         log.info("Calling Deepseek with {} messages for user session {}", 
             messages.size(), sessionId);
         
+        // 使用 reasoner 模型进行问答
+        request.setModel(deepseekProperties.getReasonerModel());
         ChatCompletionResponse response = deepseekClient.chat(request).block();
         if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
             throw new BadRequestException("AI服务暂时不可用");

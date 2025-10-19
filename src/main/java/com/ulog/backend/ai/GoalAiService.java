@@ -24,7 +24,7 @@ public class GoalAiService {
         String systemPrompt = buildSystemPrompt();
         String userPrompt = buildUserPrompt(contactInfo, userInfo, goalDescription);
 
-        return deepseekService.ask(systemPrompt, userPrompt)
+        return deepseekService.askReasoner(systemPrompt, userPrompt)
             .map(this::parseAiResponse)
             .doOnError(error -> log.error("Failed to generate goal strategy: {}", error.getMessage()));
     }

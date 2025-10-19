@@ -3,12 +3,23 @@ package com.ulog.backend.user.service;
 import com.ulog.backend.common.api.ErrorCode;
 import com.ulog.backend.common.exception.ApiException;
 import com.ulog.backend.common.exception.BadRequestException;
+import com.ulog.backend.domain.contact.Contact;
+import com.ulog.backend.domain.goal.RelationshipGoal;
+import com.ulog.backend.domain.goal.UserPushToken;
 import com.ulog.backend.domain.user.User;
+import com.ulog.backend.repository.ContactRepository;
+import com.ulog.backend.repository.RefreshTokenRepository;
+import com.ulog.backend.repository.RelationshipGoalRepository;
+import com.ulog.backend.repository.UserPushTokenRepository;
 import com.ulog.backend.repository.UserRepository;
 import com.ulog.backend.user.dto.ChangePasswordRequest;
+import com.ulog.backend.user.dto.DeleteAccountRequest;
 import com.ulog.backend.user.dto.UserResponse;
 import com.ulog.backend.user.dto.UserUpdateRequest;
+import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,12 +27,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ContactRepository contactRepository;
+    private final RelationshipGoalRepository relationshipGoalRepository;
+    private final UserPushTokenRepository userPushTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, 
+                      PasswordEncoder passwordEncoder,
+                      ContactRepository contactRepository,
+                      RelationshipGoalRepository relationshipGoalRepository,
+                      UserPushTokenRepository userPushTokenRepository,
+                      RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.contactRepository = contactRepository;
+        this.relationshipGoalRepository = relationshipGoalRepository;
+        this.userPushTokenRepository = userPushTokenRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +88,54 @@ public class UserService {
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
     }
+
+    @Transactional
+    public void deleteAccount(Long userId, DeleteAccountRequest request) {
+        User user = userRepository.findActiveById(userId)
+            .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
+        
+        // 验证密码
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new ApiException(ErrorCode.BAD_REQUEST, "current password incorrect");
+        }
+
+        // 清理关联数据
+        cleanupUserRelatedData(user);
+
+        // 撤销所有refresh tokens
+        refreshTokenRepository.revokeAllForUser(user);
+
+        // 标记用户为已删除
+        user.setDeleted(Boolean.TRUE);
+        user.setStatus(0); // 设置为非活跃状态
+        userRepository.save(user);
+    }
+
+    /**
+     * 清理用户关联数据
+     */
+    private void cleanupUserRelatedData(User user) {
+        // 1. 删除用户的所有联系人（软删除）
+        List<Contact> contacts = contactRepository.findAllByOwnerAndDeletedFalseOrderByCreatedAtDesc(user);
+        for (Contact contact : contacts) {
+            contact.setDeleted(Boolean.TRUE);
+            contactRepository.save(contact);
+        }
+
+        // 2. 删除用户的所有关系目标（软删除）
+        List<RelationshipGoal> goals = relationshipGoalRepository.findAllByUserAndDeletedFalseOrderByCreatedAtDesc(user);
+        for (RelationshipGoal goal : goals) {
+            goal.setDeleted(Boolean.TRUE);
+            relationshipGoalRepository.save(goal);
+        }
+
+        // 3. 删除用户的所有推送令牌
+        List<UserPushToken> pushTokens = userPushTokenRepository.findAllByUserAndIsActiveTrue(user);
+        userPushTokenRepository.deleteAll(pushTokens);
+
+        // 注意：conversation_sessions, user_conversation_sessions, pins 等表
+        // 已配置 ON DELETE CASCADE，删除用户时会自动级联删除
+    }
     
     /**
      * 更新用户描述（用于自我信息收集）
@@ -82,6 +156,22 @@ public class UserService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
         return user.getDescription();
+    }
+
+    /**
+     * 更新用户自我价值评分
+     */
+    @Transactional
+    public void updateUserSelfValue(Long userId, String selfValue) {
+        log.info("Updating self value for user {}: {}", userId, selfValue);
+        
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        
+        user.setSelfValue(selfValue);
+        userRepository.save(user);
+        
+        log.info("Successfully updated self value for user {}", userId);
     }
 
     private UserResponse mapToResponse(User user, boolean maskPhone) {

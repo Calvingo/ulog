@@ -38,6 +38,7 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     private final ContactService contactService;
     private final ObjectMapper objectMapper;
     private final DeepseekProperties deepseekProperties;
+    private final SelfValueCalculationService selfValueCalculationService;
     
     // 收集维度定义 - 基于专业框架
     private static final List<String> COLLECTION_DIMENSIONS = List.of(
@@ -126,13 +127,15 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         DeepseekClient deepseekClient,
         ContactService contactService,
         ObjectMapper objectMapper,
-        DeepseekProperties deepseekProperties
+        DeepseekProperties deepseekProperties,
+        SelfValueCalculationService selfValueCalculationService
     ) {
         this.sessionRepository = sessionRepository;
         this.deepseekClient = deepseekClient;
         this.contactService = contactService;
         this.objectMapper = objectMapper;
         this.deepseekProperties = deepseekProperties;
+        this.selfValueCalculationService = selfValueCalculationService;
     }
     
     @Override
@@ -544,6 +547,12 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             
             log.info("Successfully created contact {} for session {}", 
                 contact.id(), session.getSessionId());
+            
+            // 🔥 异步计算并更新 selfValue（不阻塞返回）
+            selfValueCalculationService.calculateAndUpdateContactAsync(
+                contact.id(), 
+                collectedData
+            );
             
             // 4. 更新会话状态
             session.setStatus(SessionStatus.COMPLETED.name());

@@ -3,6 +3,7 @@ package com.ulog.backend.ai;
 import com.ulog.backend.ai.dto.ChatCompletionRequest;
 import com.ulog.backend.ai.dto.ChatCompletionResponse;
 import com.ulog.backend.ai.dto.ChatMessage;
+import com.ulog.backend.config.DeepseekProperties;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -11,13 +12,39 @@ import reactor.core.publisher.Mono;
 public class DeepseekService {
 
     private final DeepseekClient client;
+    private final DeepseekProperties properties;
 
-    public DeepseekService(DeepseekClient client) {
+    public DeepseekService(DeepseekClient client, DeepseekProperties properties) {
         this.client = client;
+        this.properties = properties;
     }
 
     public Mono<String> ask(String systemPrompt, String userPrompt) {
         ChatCompletionRequest request = new ChatCompletionRequest();
+        request.setMessages(List.of(
+            new ChatMessage("system", systemPrompt),
+            new ChatMessage("user", userPrompt)
+        ));
+        request.setTemperature(0.7);
+        return client.chat(request)
+            .map(response -> {
+                if (response.getChoices() == null || response.getChoices().isEmpty()) {
+                    return "";
+                }
+                ChatCompletionResponse.Choice choice = response.getChoices().get(0);
+                if (choice.getMessage() != null && choice.getMessage().getContent() != null) {
+                    return choice.getMessage().getContent();
+                }
+                if (choice.getDelta() != null && choice.getDelta().getContent() != null) {
+                    return choice.getDelta().getContent();
+                }
+                return "";
+            });
+    }
+
+    public Mono<String> askReasoner(String systemPrompt, String userPrompt) {
+        ChatCompletionRequest request = new ChatCompletionRequest();
+        request.setModel(properties.getReasonerModel()); // 使用 reasoner 模型
         request.setMessages(List.of(
             new ChatMessage("system", systemPrompt),
             new ChatMessage("user", userPrompt)

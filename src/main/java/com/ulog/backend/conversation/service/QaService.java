@@ -389,6 +389,8 @@ public class QaService {
         log.info("Calling Deepseek with {} messages for session {}", 
             messages.size(), sessionId);
         
+        // 使用 reasoner 模型进行问答
+        request.setModel(deepseekProperties.getReasonerModel());
         ChatCompletionResponse response = deepseekClient.chat(request).block();
         String answer = response.getChoices().get(0).getMessage().getContent();
         

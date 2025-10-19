@@ -680,6 +680,69 @@ public class PromptTemplates {
             return "3.0"; // 默认值
         }
     }
+
+    /**
+     * 构建 Self Value 评估 Prompt
+     */
+    public static String buildSelfValueEvaluationPrompt(Map<String, Object> collectedData) {
+        StringBuilder prompt = new StringBuilder();
+        
+        prompt.append("你是心理评估专家，请根据对话内容评估以下5个维度（1.0-5.0分）：\n\n");
+        
+        prompt.append("评估维度：\n");
+        prompt.append("1. 自尊水平 (selfEsteem): 自信程度、自我肯定\n");
+        prompt.append("2. 自我接纳 (selfAcceptance): 对自身缺点的态度\n");
+        prompt.append("3. 自我效能 (selfEfficacy): 对能力的信心\n");
+        prompt.append("4. 存在价值感 (existentialValue): 生命意义感\n");
+        prompt.append("5. 自我一致性 (selfConsistency): 言行一致性\n\n");
+        
+        prompt.append("对话数据：\n");
+        prompt.append(formatCollectedDataForPrompt(collectedData));
+        prompt.append("\n\n");
+        
+        prompt.append("请返回JSON格式：\n");
+        prompt.append("{\n");
+        prompt.append("  \"selfEsteem\": 3.5,\n");
+        prompt.append("  \"selfAcceptance\": 4.0,\n");
+        prompt.append("  \"selfEfficacy\": 3.0,\n");
+        prompt.append("  \"existentialValue\": 4.5,\n");
+        prompt.append("  \"selfConsistency\": 3.8\n");
+        prompt.append("}\n\n");
+        
+        prompt.append("评分标准：\n");
+        prompt.append("- 1.0-2.0: 较低水平\n");
+        prompt.append("- 2.1-3.0: 中等偏下\n");
+        prompt.append("- 3.1-4.0: 中等偏上\n");
+        prompt.append("- 4.1-5.0: 较高水平\n\n");
+        
+        prompt.append("注意：\n");
+        prompt.append("- 如果信息不足以判断某个维度，返回默认值3.0\n");
+        prompt.append("- 评分要客观、合理\n");
+        prompt.append("- 只返回JSON，不要其他解释\n");
+        
+        return prompt.toString();
+    }
+
+    /**
+     * 格式化收集的数据用于 Prompt
+     */
+    private static String formatCollectedDataForPrompt(Map<String, Object> collectedData) {
+        if (collectedData == null || collectedData.isEmpty()) {
+            return "无对话数据";
+        }
+        
+        StringBuilder formatted = new StringBuilder();
+        for (Map.Entry<String, Object> entry : collectedData.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            
+            if (value != null && !value.toString().trim().isEmpty()) {
+                formatted.append("- ").append(key).append(": ").append(value.toString()).append("\n");
+            }
+        }
+        
+        return formatted.toString();
+    }
     
     // ========== 用户自我信息收集提示词 ==========
     

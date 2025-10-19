@@ -3,12 +3,14 @@ package com.ulog.backend.user.controller;
 import com.ulog.backend.common.api.ApiResponse;
 import com.ulog.backend.security.UserPrincipal;
 import com.ulog.backend.user.dto.ChangePasswordRequest;
+import com.ulog.backend.user.dto.DeleteAccountRequest;
 import com.ulog.backend.user.dto.UserResponse;
 import com.ulog.backend.user.dto.UserUpdateRequest;
 import com.ulog.backend.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +43,12 @@ public class UserController {
     @PostMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(@AuthenticationPrincipal UserPrincipal principal, @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(principal.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@AuthenticationPrincipal UserPrincipal principal, @Valid @RequestBody DeleteAccountRequest request) {
+        userService.deleteAccount(principal.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
