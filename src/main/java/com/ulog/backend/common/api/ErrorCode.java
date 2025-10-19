@@ -15,6 +15,7 @@ public enum ErrorCode {
     TOKEN_INVALID(2003, "invalid token"),
     LOGIN_FAILED(2004, "invalid credentials"),
     ACCOUNT_LOCKED(2005, "account locked"),
+    FORBIDDEN(2006, "forbidden"),
 
     STORAGE_ERROR(4000, "storage error"),
 

@@ -44,6 +44,31 @@
       "key": "userSessionId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "goalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pinId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "qaIndex",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -1678,6 +1703,1525 @@
               "path": ["api", "v1", "user-conversation", "qa", "{{userSessionId}}", "generate-summary"]
             },
             "description": "完整流程测试 - 生成AI总结"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 关系目标管理",
+      "description": "设定关系目标，AI生成策略和行动计划，定时推送提醒",
+      "item": [
+        {
+          "name": "1) 创建关系目标",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.goalId) {",
+                  "        pm.collectionVariables.set('goalId', response.data.goalId);",
+                  "        console.log('✅ 目标创建成功，ID:', response.data.goalId);",
+                  "        console.log('📝 AI策略:', response.data.aiStrategy);",
+                  "        console.log('📋 行动计划数量:', response.data.actionPlans.length);",
+                  "        ",
+                  "        if (response.data.actionPlans && response.data.actionPlans.length > 0) {",
+                  "            pm.collectionVariables.set('planId', response.data.actionPlans[0].planId);",
+                  "            console.log('📌 第一个行动计划ID:', response.data.actionPlans[0].planId);",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactId\": {{contactId}},\n  \"goalDescription\": \"希望能够和这个联系人建立更深厚的友谊，增进彼此了解，定期保持联系\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals"]
+            },
+            "description": "为指定联系人创建关系目标，AI会自动生成策略和行动计划"
+          }
+        },
+        {
+          "name": "2) 获取目标列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals"]
+            },
+            "description": "获取当前用户的所有关系目标"
+          }
+        },
+        {
+          "name": "3) 按联系人筛选目标",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals?contactId={{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals"],
+              "query": [
+                {
+                  "key": "contactId",
+                  "value": "{{contactId}}"
+                }
+              ]
+            },
+            "description": "获取指定联系人的所有关系目标"
+          }
+        },
+        {
+          "name": "4) 获取目标详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}"]
+            },
+            "description": "获取目标详情，包括所有行动计划"
+          }
+        },
+        {
+          "name": "5) 更新目标",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalDescription\": \"更新后的目标：希望能够和这个联系人建立更深厚的友谊，争取每周至少联系一次\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}"]
+            },
+            "description": "更新关系目标的描述或状态"
+          }
+        },
+        {
+          "name": "6) 删除目标",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}"]
+            },
+            "description": "软删除指定的关系目标"
+          }
+        },
+        {
+          "name": "7) 重新生成AI策略",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ AI策略重新生成成功');",
+                  "    console.log('📝 新策略:', response.data.aiStrategy);",
+                  "    console.log('📋 新行动计划数量:', response.data.actionPlans.length);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "regenerate"]
+            },
+            "description": "重新生成AI策略和行动计划（会删除旧的未完成的计划）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 行动计划管理",
+      "description": "管理AI生成的行动计划，更新状态和采纳设置",
+      "item": [
+        {
+          "name": "1) 更新行动计划状态",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 行动计划状态已更新');",
+                  "    console.log('📊 状态:', response.data.status);",
+                  "    console.log('✅ 完成时间:', response.data.completedAt);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "status"]
+            },
+            "description": "更新行动计划的执行状态（PENDING/COMPLETED/SKIPPED/CANCELLED）"
+          }
+        },
+        {
+          "name": "2) 标记为已完成（带完成时间）",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"completedAt\": \"2025-10-20T14:30:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "status"]
+            },
+            "description": "标记行动计划为已完成，并指定完成时间"
+          }
+        },
+        {
+          "name": "3) 采纳该行动计划",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 行动计划已采纳');",
+                  "    console.log('🔔 系统将为此计划创建提醒');",
+                  "    console.log('📅 计划时间:', response.data.scheduledTime);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAdopted\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/adoption",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "adoption"]
+            },
+            "description": "采纳该行动计划，系统会自动创建提醒"
+          }
+        },
+        {
+          "name": "4) 取消采纳行动计划",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 行动计划已取消采纳');",
+                  "    console.log('🔕 系统将取消相关的未发送提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAdopted\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/adoption",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "adoption"]
+            },
+            "description": "取消采纳该行动计划，系统会自动取消相关提醒"
+          }
+        },
+        {
+          "name": "5) 标记为已跳过",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SKIPPED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "status"]
+            },
+            "description": "跳过该行动计划"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 提醒管理",
+      "description": "查看即将到来的行动计划提醒",
+      "item": [
+        {
+          "name": "1) 获取即将到来的提醒",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 获取提醒成功');",
+                  "    console.log('📋 提醒数量:', response.data.length);",
+                  "    ",
+                  "    response.data.forEach((reminder, index) => {",
+                  "        console.log(`\\n提醒 ${index + 1}:`, reminder.planTitle);",
+                  "        console.log('  联系人:', reminder.contactName);",
+                  "        console.log('  提醒时间:', reminder.remindTime);",
+                  "        console.log('  状态:', reminder.status);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/reminders/upcoming",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "reminders", "upcoming"]
+            },
+            "description": "获取用户所有即将到来的行动计划提醒（状态为PENDING）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📱 推送令牌管理",
+      "description": "管理移动设备的推送通知令牌",
+      "item": [
+        {
+          "name": "1) 注册推送令牌（Android）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Android推送令牌注册成功');",
+                  "    console.log('📱 设备类型: ANDROID');",
+                  "    console.log('🔔 您将收到关系目标的推送提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceToken\": \"your_fcm_device_token_for_android\",\n  \"deviceType\": \"ANDROID\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/push/tokens",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push", "tokens"]
+            },
+            "description": "注册Android设备的FCM推送令牌"
+          }
+        },
+        {
+          "name": "2) 注册推送令牌（iOS）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ iOS推送令牌注册成功');",
+                  "    console.log('📱 设备类型: IOS');",
+                  "    console.log('🔔 您将收到关系目标的推送提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceToken\": \"your_fcm_device_token_for_ios\",\n  \"deviceType\": \"IOS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/push/tokens",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push", "tokens"]
+            },
+            "description": "注册iOS设备的FCM推送令牌"
+          }
+        },
+        {
+          "name": "3) 注销推送令牌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 推送令牌已注销');",
+                  "    console.log('🔕 该设备将不再收到推送提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/push/tokens/{{tokenId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push", "tokens", "{{tokenId}}"]
+            },
+            "description": "停用指定的推送令牌"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 关系目标完整流程",
+      "description": "端到端的关系目标功能测试流程",
+      "item": [
+        {
+          "name": "完整流程-1)创建联系人",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('contactId', response.data.id);",
+                  "    console.log('✅ 联系人创建成功，ID:', response.data.id);",
+                  "    console.log('👤 联系人:', response.data.name);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"王五\",\n  \"description\": \"高中同学，目前在上海工作，做市场营销，性格外向，喜欢旅游和摄影\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contacts"]
+            },
+            "description": "先创建一个联系人"
+          }
+        },
+        {
+          "name": "完整流程-2)创建关系目标",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('goalId', response.data.goalId);",
+                  "    console.log('✅ 关系目标创建成功');",
+                  "    console.log('🎯 目标ID:', response.data.goalId);",
+                  "    console.log('📝 AI策略:', response.data.aiStrategy);",
+                  "    console.log('📋 行动计划:', response.data.actionPlans.length + '个');",
+                  "    ",
+                  "    response.data.actionPlans.forEach((plan, index) => {",
+                  "        console.log(`  ${index + 1}. ${plan.title} - ${plan.scheduledTime}`);",
+                  "        if (index === 0) {",
+                  "            pm.collectionVariables.set('planId', plan.planId);",
+                  "        }",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactId\": {{contactId}},\n  \"goalDescription\": \"希望能够和王五重新建立联系，恢复高中时期的友谊，并建立长期稳定的友谊关系\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals"]
+            },
+            "description": "为联系人创建关系目标，AI会生成策略和行动计划"
+          }
+        },
+        {
+          "name": "完整流程-3)查看目标详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📋 目标详情:');",
+                  "    console.log('  联系人:', response.data.contactName);",
+                  "    console.log('  目标:', response.data.goalDescription);",
+                  "    console.log('  状态:', response.data.status);",
+                  "    console.log('  行动计划数:', response.data.actionPlans.length);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}"]
+            },
+            "description": "查看目标的完整信息"
+          }
+        },
+        {
+          "name": "完整流程-4)取消采纳某个计划",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 行动计划采纳状态已更新');",
+                  "    console.log('🔕 未发送的提醒已被取消');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAdopted\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/adoption",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "adoption"]
+            },
+            "description": "用户决定不采纳某个AI建议的行动计划"
+          }
+        },
+        {
+          "name": "完整流程-5)重新采纳计划",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 行动计划已重新采纳');",
+                  "    console.log('🔔 系统已创建新的提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAdopted\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/adoption",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "adoption"]
+            },
+            "description": "用户改变主意，重新采纳该行动计划"
+          }
+        },
+        {
+          "name": "完整流程-6)查看即将到来的提醒",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('🔔 即将到来的提醒:', response.data.length + '个');",
+                  "    ",
+                  "    response.data.forEach((reminder, index) => {",
+                  "        console.log(`\\n提醒 ${index + 1}:`);",
+                  "        console.log('  行动:', reminder.planTitle);",
+                  "        console.log('  联系人:', reminder.contactName);",
+                  "        console.log('  提醒时间:', reminder.remindTime);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/reminders/upcoming",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "reminders", "upcoming"]
+            },
+            "description": "查看所有即将到来的提醒"
+          }
+        },
+        {
+          "name": "完整流程-7)标记计划为已完成",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 行动计划已标记为完成');",
+                  "    console.log('🎉 恭喜完成这个行动！');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/goals/{{goalId}}/action-plans/{{planId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "goals", "{{goalId}}", "action-plans", "{{planId}}", "status"]
+            },
+            "description": "用户完成了一个行动计划"
+          }
+        },
+        {
+          "name": "完整流程-8)注册推送令牌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 推送令牌注册成功');",
+                  "    console.log('📱 设备已准备好接收提醒');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceToken\": \"test_fcm_token_12345\",\n  \"deviceType\": \"ANDROID\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/push/tokens",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push", "tokens"]
+            },
+            "description": "注册设备推送令牌，以接收提醒通知"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📌 Pin收藏管理",
+      "description": "收藏对话中有价值的AI回答，便于后续查看",
+      "item": [
+        {
+          "name": "1) 创建Pin（从QA历史）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.pinId) {",
+                  "        pm.collectionVariables.set('pinId', response.data.pinId);",
+                  "        console.log('✅ Pin创建成功，ID:', response.data.pinId);",
+                  "        console.log('❓ 问题:', response.data.question);",
+                  "        console.log('💬 回答:', response.data.answer.substring(0, 50) + '...');",
+                  "        ",
+                  "        if (response.data.hasSupplementInfo) {",
+                  "            console.log('📝 补充问答: 有');",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"qaIndex\": 0,\n  \"note\": \"这个回答很有价值\",\n  \"tags\": \"重要,参考\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pins",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"]
+            },
+            "description": "从QA历史中Pin一个回答（qaIndex为QA在历史中的索引，从0开始）"
+          }
+        },
+        {
+          "name": "2) 获取所有Pin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 获取Pin列表成功');",
+                  "    console.log('📋 Pin数量:', response.data.length);",
+                  "    ",
+                  "    response.data.forEach((pin, index) => {",
+                  "        console.log(`\\nPin ${index + 1}:`);",
+                  "        console.log('  类型:', pin.sourceType);",
+                  "        console.log('  联系人:', pin.contactName || '用户自我');",
+                  "        console.log('  问题:', pin.questionPreview);",
+                  "        console.log('  标签:', pin.tags);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"]
+            },
+            "description": "获取用户所有的Pin收藏"
+          }
+        },
+        {
+          "name": "3) 按联系人筛选Pin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins?contactId={{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"],
+              "query": [
+                {
+                  "key": "contactId",
+                  "value": "{{contactId}}"
+                }
+              ]
+            },
+            "description": "获取指定联系人相关的所有Pin"
+          }
+        },
+        {
+          "name": "4) 按来源类型筛选Pin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins?sourceType=CONTACT_QA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"],
+              "query": [
+                {
+                  "key": "sourceType",
+                  "value": "CONTACT_QA",
+                  "description": "可选值：CONTACT_QA 或 USER_QA"
+                }
+              ]
+            },
+            "description": "按来源类型筛选Pin（联系人QA或用户自我QA）"
+          }
+        },
+        {
+          "name": "5) 获取Pin详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📌 Pin详情:');",
+                  "    console.log('  问题:', response.data.question);",
+                  "    console.log('  回答:', response.data.answer);",
+                  "    ",
+                  "    if (response.data.hasSupplementInfo) {",
+                  "        console.log('  补充问题:', response.data.supplementQuestion);",
+                  "        console.log('  补充回答:', response.data.supplementAnswer);",
+                  "    }",
+                  "    ",
+                  "    console.log('  备注:', response.data.note);",
+                  "    console.log('  标签:', response.data.tags);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/{{pinId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "{{pinId}}"]
+            },
+            "description": "获取Pin的完整内容"
+          }
+        },
+        {
+          "name": "6) 更新Pin备注和标签",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Pin更新成功');",
+                  "    console.log('📝 备注:', response.data.note);",
+                  "    console.log('🏷️ 标签:', response.data.tags);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"更新后的备注说明\",\n  \"tags\": \"工作,学习,技巧\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/{{pinId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "{{pinId}}"]
+            },
+            "description": "更新Pin的用户备注和标签"
+          }
+        },
+        {
+          "name": "7) 删除Pin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Pin已删除');",
+                  "    pm.collectionVariables.set('pinId', '');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/{{pinId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "{{pinId}}"]
+            },
+            "description": "删除指定的Pin"
+          }
+        },
+        {
+          "name": "8) 检查是否已Pin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data === true) {",
+                  "        console.log('✅ 该QA已被Pin');",
+                  "    } else {",
+                  "        console.log('📌 该QA未被Pin');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/check?sessionId={{sessionId}}&qaIndex=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "check"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "{{sessionId}}"
+                },
+                {
+                  "key": "qaIndex",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "检查指定的QA是否已被Pin"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 Pin完整流程测试",
+      "description": "端到端的Pin功能测试流程",
+      "item": [
+        {
+          "name": "完整流程-1)开始对话收集",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('sessionId', response.data.sessionId);",
+                  "    console.log('✅ 对话会话开始:', response.data.sessionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactName\": \"测试联系人\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "start"]
+            },
+            "description": "开始一个对话会话"
+          }
+        },
+        {
+          "name": "完整流程-2)回答几轮问题",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"30岁\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/collect/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "collect", "{{sessionId}}", "message"]
+            },
+            "description": "回答问题（多次运行以进入QA模式）"
+          }
+        },
+        {
+          "name": "完整流程-3)进行QA问答",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('💬 QA回答:', response.data.answer);",
+                  "    console.log('📌 现在可以Pin这个回答了（qaIndex=0）');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"这个联系人和我的关系如何？\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/conversation/qa/{{sessionId}}/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "conversation", "qa", "{{sessionId}}", "message"]
+            },
+            "description": "进行QA问答"
+          }
+        },
+        {
+          "name": "完整流程-4)Pin第一个QA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('pinId', response.data.pinId);",
+                  "    console.log('✅ 成功Pin了第一个QA');",
+                  "    console.log('📌 Pin ID:', response.data.pinId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"qaIndex\": 0,\n  \"note\": \"第一个有价值的回答\",\n  \"tags\": \"关系分析,重要\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pins",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"]
+            },
+            "description": "Pin第一个QA回答"
+          }
+        },
+        {
+          "name": "完整流程-5)检查是否已Pin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('检查结果:', response.data ? '已Pin ✅' : '未Pin 📌');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/check?sessionId={{sessionId}}&qaIndex=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "check"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "{{sessionId}}"
+                },
+                {
+                  "key": "qaIndex",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "检查该QA是否已被Pin"
+          }
+        },
+        {
+          "name": "完整流程-6)查看Pin列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📋 我的Pin收藏:', response.data.length + '个');",
+                  "    ",
+                  "    response.data.forEach((pin, index) => {",
+                  "        console.log(`\\n${index + 1}. ${pin.questionPreview}`);",
+                  "        console.log('   回答预览:', pin.answerPreview);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins"]
+            },
+            "description": "查看所有Pin"
+          }
+        },
+        {
+          "name": "完整流程-7)查看Pin详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('📌 Pin完整内容:');",
+                  "    console.log('❓ 问题:', response.data.question);",
+                  "    console.log('💬 回答:', response.data.answer);",
+                  "    console.log('📝 备注:', response.data.note);",
+                  "    console.log('🏷️ 标签:', response.data.tags);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/{{pinId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "{{pinId}}"]
+            },
+            "description": "查看Pin的完整内容"
+          }
+        },
+        {
+          "name": "完整流程-8)更新Pin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Pin备注和标签已更新');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"这个洞察非常有价值，需要经常回顾\",\n  \"tags\": \"关键洞察,行动指南,高优先级\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pins/{{pinId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pins", "{{pinId}}"]
+            },
+            "description": "更新Pin的备注和标签"
           }
         }
       ]

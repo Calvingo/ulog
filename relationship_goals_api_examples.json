@@ -1,0 +1,342 @@
+{
+  "info": {
+    "name": "Relationship Goals API",
+    "description": "关系目标功能API示例",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Goals Management",
+      "item": [
+        {
+          "name": "Create Goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactId\": 1,\n  \"goalDescription\": \"希望能够和这个联系人建立更深厚的友谊，增进彼此了解\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/goals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals"]
+            }
+          }
+        },
+        {
+          "name": "List Goals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals"]
+            }
+          }
+        },
+        {
+          "name": "List Goals by Contact",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals?contactId=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals"],
+              "query": [
+                {
+                  "key": "contactId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Goal Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Goal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalDescription\": \"更新后的目标描述\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Goal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Regenerate Strategy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId/regenerate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId", "regenerate"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Action Plans",
+      "item": [
+        {
+          "name": "Update Action Plan Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"completedAt\": \"2025-10-20T10:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId/action-plans/:planId/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId", "action-plans", ":planId", "status"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                },
+                {
+                  "key": "planId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Action Plan Adoption",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isAdopted\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/goals/:goalId/action-plans/:planId/adoption",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", ":goalId", "action-plans", ":planId", "adoption"],
+              "variable": [
+                {
+                  "key": "goalId",
+                  "value": "1"
+                },
+                {
+                  "key": "planId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reminders",
+      "item": [
+        {
+          "name": "Get Upcoming Reminders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/goals/reminders/upcoming",
+              "host": ["{{base_url}}"],
+              "path": ["api", "goals", "reminders", "upcoming"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Push Tokens",
+      "item": [
+        {
+          "name": "Register Push Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceToken\": \"fcm_device_token_here\",\n  \"deviceType\": \"ANDROID\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/push/tokens",
+              "host": ["{{base_url}}"],
+              "path": ["api", "push", "tokens"]
+            }
+          }
+        },
+        {
+          "name": "Deactivate Push Token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/push/tokens/:tokenId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "push", "tokens", ":tokenId"],
+              "variable": [
+                {
+                  "key": "tokenId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    }
+  ]
+}
+
