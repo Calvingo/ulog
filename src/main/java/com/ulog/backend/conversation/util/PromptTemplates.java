@@ -555,6 +555,7 @@ public class PromptTemplates {
      * 构建增强的联系人QA回答Prompt（包含self_value和qa_history）
      * @deprecated 使用buildBaseContactQaSystemPrompt + 原生messages数组代替
      */
+    @Deprecated
     public static String buildEnhancedContactQaPrompt(
         String question, 
         String contactDesc, 
