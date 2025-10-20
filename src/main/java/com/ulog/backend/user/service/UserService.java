@@ -3,6 +3,7 @@ package com.ulog.backend.user.service;
 import com.ulog.backend.common.api.ErrorCode;
 import com.ulog.backend.common.exception.ApiException;
 import com.ulog.backend.common.exception.BadRequestException;
+import com.ulog.backend.compliance.service.OperationLogService;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.goal.RelationshipGoal;
 import com.ulog.backend.domain.goal.UserPushToken;
@@ -35,19 +36,22 @@ public class UserService {
     private final RelationshipGoalRepository relationshipGoalRepository;
     private final UserPushTokenRepository userPushTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final OperationLogService operationLogService;
 
     public UserService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder,
                       ContactRepository contactRepository,
                       RelationshipGoalRepository relationshipGoalRepository,
                       UserPushTokenRepository userPushTokenRepository,
-                      RefreshTokenRepository refreshTokenRepository) {
+                      RefreshTokenRepository refreshTokenRepository,
+                      OperationLogService operationLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.contactRepository = contactRepository;
         this.relationshipGoalRepository = relationshipGoalRepository;
         this.userPushTokenRepository = userPushTokenRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.operationLogService = operationLogService;
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +91,9 @@ public class UserService {
             throw new BadRequestException("new password must differ from current password");
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        
+        // 记录密码修改操作
+        operationLogService.logOperation(userId, "password_change", "User changed password");
     }
 
     @Transactional
@@ -99,16 +106,23 @@ public class UserService {
             throw new ApiException(ErrorCode.BAD_REQUEST, "current password incorrect");
         }
 
+        // 记录账号删除操作日志（在实际删除前记录）
+        String operationDetail = String.format("User %s (phone: %s) requested account deletion", 
+            userId, user.getPhone());
+        operationLogService.logOperation(userId, "account_delete", operationDetail);
+
         // 清理关联数据
         cleanupUserRelatedData(user);
 
         // 撤销所有refresh tokens
         refreshTokenRepository.revokeAllForUser(user);
 
-        // 标记用户为已删除
+        // 标记用户为已删除（软删除，保留审计数据）
         user.setDeleted(Boolean.TRUE);
         user.setStatus(0); // 设置为非活跃状态
         userRepository.save(user);
+        
+        log.info("User account deleted: userId={}, phone={}", userId, user.getPhone());
     }
 
     /**
