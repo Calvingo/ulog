@@ -36,7 +36,6 @@ public class UserInfoCollectionServiceImpl implements UserInfoCollectionService 
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final DeepseekProperties deepseekProperties;
-    private final SelfValueCalculationService selfValueCalculationService;
     
     // 收集维度定义 - 基于专业框架（与联系人相同）
     private static final List<String> COLLECTION_DIMENSIONS = List.of(
@@ -125,15 +124,13 @@ public class UserInfoCollectionServiceImpl implements UserInfoCollectionService 
         DeepseekClient deepseekClient,
         UserService userService,
         ObjectMapper objectMapper,
-        DeepseekProperties deepseekProperties,
-        SelfValueCalculationService selfValueCalculationService
+        DeepseekProperties deepseekProperties
     ) {
         this.sessionRepository = sessionRepository;
         this.deepseekClient = deepseekClient;
         this.userService = userService;
         this.objectMapper = objectMapper;
         this.deepseekProperties = deepseekProperties;
-        this.selfValueCalculationService = selfValueCalculationService;
     }
     
     @Override
@@ -459,12 +456,6 @@ public class UserInfoCollectionServiceImpl implements UserInfoCollectionService 
             userService.updateUserDescription(session.getUserId(), description);
             
             log.info("Successfully updated user description for session {}", session.getSessionId());
-            
-            // 🔥 异步计算并更新 selfValue（不阻塞返回）
-            selfValueCalculationService.calculateAndUpdateUserAsync(
-                session.getUserId(), 
-                collectedData
-            );
             
             // 更新会话状态
             session.setStatus(SessionStatus.COMPLETED);

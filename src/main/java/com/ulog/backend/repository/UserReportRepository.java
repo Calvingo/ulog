@@ -10,7 +10,9 @@ public interface UserReportRepository extends JpaRepository<UserReport, Long> {
 
     List<UserReport> findByReporterIdOrderByCreatedAtDesc(Long reporterId);
 
-    List<UserReport> findByReportedUserIdOrderByCreatedAtDesc(Long reportedUserId);
+    List<UserReport> findByTargetTypeOrderByCreatedAtDesc(String targetType);
+
+    List<UserReport> findByTargetIdOrderByCreatedAtDesc(String targetId);
 
     List<UserReport> findByStatusOrderByCreatedAtDesc(String status);
 

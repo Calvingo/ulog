@@ -4,6 +4,7 @@ import com.ulog.backend.common.api.ErrorCode;
 import com.ulog.backend.common.exception.ApiException;
 import com.ulog.backend.common.exception.BadRequestException;
 import com.ulog.backend.compliance.service.OperationLogService;
+import com.ulog.backend.conversation.service.SelfValueCalculationService;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.goal.RelationshipGoal;
 import com.ulog.backend.domain.goal.UserPushToken;
@@ -37,6 +38,7 @@ public class UserService {
     private final UserPushTokenRepository userPushTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OperationLogService operationLogService;
+    private final SelfValueCalculationService selfValueCalculationService;
 
     public UserService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder,
@@ -44,7 +46,8 @@ public class UserService {
                       RelationshipGoalRepository relationshipGoalRepository,
                       UserPushTokenRepository userPushTokenRepository,
                       RefreshTokenRepository refreshTokenRepository,
-                      OperationLogService operationLogService) {
+                      OperationLogService operationLogService,
+                      SelfValueCalculationService selfValueCalculationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.contactRepository = contactRepository;
@@ -52,6 +55,7 @@ public class UserService {
         this.userPushTokenRepository = userPushTokenRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.operationLogService = operationLogService;
+        this.selfValueCalculationService = selfValueCalculationService;
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +164,11 @@ public class UserService {
             .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
         user.setDescription(description);
         userRepository.save(user);
+        
+        // 🔥 异步重新计算 selfValue（基于新的description）
+        if (description != null && !description.trim().isEmpty()) {
+            selfValueCalculationService.calculateAndUpdateUserAsync(userId, description);
+        }
     }
     
     /**

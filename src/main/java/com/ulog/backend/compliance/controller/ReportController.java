@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/reports")
-@Tag(name = "Reports", description = "用户举报相关API")
+@Tag(name = "Reports", description = "AI内容反馈和系统问题报告API")
 public class ReportController {
 
     private final ReportService reportService;
@@ -29,8 +29,11 @@ public class ReportController {
     }
 
     @PostMapping
-    @LogOperation(value = "submit_report", description = "提交用户举报")
-    @Operation(summary = "提交举报", description = "提交对用户或内容的举报")
+    @LogOperation(value = "submit_report", description = "提交AI内容反馈或系统问题报告")
+    @Operation(
+        summary = "提交反馈报告", 
+        description = "提交AI内容问题反馈或系统Bug报告。支持的类型：AI_INAPPROPRIATE_CONTENT（AI不当内容）、AI_POOR_QUALITY（AI质量差）、SYSTEM_BUG（系统错误）、OTHER（其他）"
+    )
     public ApiResponse<ReportResponse> submitReport(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ReportRequest request) {
@@ -40,7 +43,7 @@ public class ReportController {
     }
 
     @GetMapping("/my-reports")
-    @Operation(summary = "查看我的举报", description = "查看当前用户提交的所有举报")
+    @Operation(summary = "查看我的报告", description = "查看当前用户提交的所有反馈报告")
     public ApiResponse<List<ReportResponse>> getMyReports(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         
@@ -50,14 +53,14 @@ public class ReportController {
 
     // 管理员功能 - 后续可以添加管理员角色验证
     @GetMapping("/pending")
-    @Operation(summary = "获取待处理举报（管理员）", description = "获取所有待处理的举报")
+    @Operation(summary = "获取待处理报告（管理员）", description = "获取所有待处理的反馈报告")
     public ApiResponse<List<ReportResponse>> getPendingReports() {
         List<ReportResponse> reports = reportService.getPendingReports();
         return ApiResponse.success(reports);
     }
 
     @GetMapping("/all")
-    @Operation(summary = "获取所有举报（管理员）", description = "获取所有举报记录")
+    @Operation(summary = "获取所有报告（管理员）", description = "获取所有反馈报告记录")
     public ApiResponse<List<ReportResponse>> getAllReports() {
         List<ReportResponse> reports = reportService.getAllReports();
         return ApiResponse.success(reports);

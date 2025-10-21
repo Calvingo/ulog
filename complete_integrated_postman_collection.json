@@ -252,6 +252,20 @@
         },
         {
           "name": "3) 修改密码",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 密码修改成功');",
+                  "    console.log('⚠️ 请使用新密码重新登录');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -275,6 +289,53 @@
               "path": ["api", "v1", "users", "me", "password"]
             },
             "description": "修改用户密码"
+          }
+        },
+        {
+          "name": "4) 注销账户",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ 账户注销成功');",
+                  "    console.log('🗑️ 用户数据已软删除');",
+                  "    console.log('🔒 所有Token已撤销');",
+                  "    console.log('📋 操作已记录到审计日志');",
+                  "    ",
+                  "    // 清除保存的Token",
+                  "    pm.collectionVariables.set('accessToken', '');",
+                  "    pm.collectionVariables.set('refreshToken', '');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Test123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "注销当前用户账户（软删除，需要密码验证）。此操作会：1) 标记用户为已删除 2) 撤销所有Token 3) 软删除所有关联数据（联系人、目标等） 4) 记录审计日志"
           }
         }
       ]
@@ -3222,6 +3283,486 @@
               "path": ["api", "pins", "{{pinId}}"]
             },
             "description": "更新Pin的备注和标签"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 隐私政策管理",
+      "description": "隐私政策查看和用户同意管理",
+      "item": [
+        {
+          "name": "1) 获取隐私政策",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 获取隐私政策成功');",
+                  "    console.log('📄 版本:', response.data.version);",
+                  "    console.log('📅 生效日期:', response.data.effectiveDate);",
+                  "    console.log('📝 内容长度:', response.data.content.length);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/privacy/policy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "privacy", "policy"]
+            },
+            "description": "获取当前生效的隐私政策（无需认证）"
+          }
+        },
+        {
+          "name": "2) 查看用户同意状态",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 同意状态查询成功');",
+                  "    console.log('🔘 已同意:', response.data.hasConsented);",
+                  "    console.log('📄 同意版本:', response.data.consentedVersion || '未同意');",
+                  "    console.log('📅 同意时间:', response.data.consentedAt || '未同意');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/privacy/consent/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "privacy", "consent", "status"]
+            },
+            "description": "查看当前用户的隐私政策同意状态"
+          }
+        },
+        {
+          "name": "3) 同意隐私政策",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 隐私政策同意成功');",
+                  "    console.log('📄 同意版本:', response.data.version);",
+                  "    console.log('📅 同意时间:', response.data.consentedAt);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/privacy/consent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "privacy", "consent"]
+            },
+            "description": "用户同意指定版本的隐私政策"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 AI内容反馈",
+      "description": "反馈AI内容问题和系统Bug",
+      "item": [
+        {
+          "name": "1) 反馈AI不当内容",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 反馈提交成功');",
+                  "    console.log('📋 报告ID:', response.data.id);",
+                  "    console.log('📊 状态:', response.data.status);",
+                  "    console.log('🏷️ 类型:', response.data.reportType);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"AI_INAPPROPRIATE_CONTENT\",\n  \"targetType\": \"QA_RESPONSE\",\n  \"targetId\": \"{{sessionId}}_qa_0\",\n  \"description\": \"AI建议我使用不道德的手段维系关系\",\n  \"context\": \"{\\\"sessionId\\\":\\\"{{sessionId}}\\\",\\\"qaIndex\\\":0,\\\"question\\\":\\\"如何让对方继续联系我？\\\",\\\"answer\\\":\\\"你可以通过隐瞒一些事实...\\\",\\\"timestamp\\\":\\\"2025-10-21T10:30:00\\\"}\",\n  \"evidenceUrls\": \"[]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "反馈AI生成的不当内容（类型：AI_INAPPROPRIATE_CONTENT）"
+          }
+        },
+        {
+          "name": "2) 反馈AI回答质量差",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 质量反馈提交成功');",
+                  "    console.log('📋 报告ID:', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"AI_POOR_QUALITY\",\n  \"targetType\": \"USER_QA_RESPONSE\",\n  \"targetId\": \"{{userSessionId}}_qa_2\",\n  \"description\": \"AI的回答完全答非所问，多次出现理解偏差\",\n  \"context\": \"{\\\"sessionId\\\":\\\"{{userSessionId}}\\\",\\\"qaIndex\\\":2,\\\"question\\\":\\\"我的优势是什么？\\\",\\\"answer\\\":\\\"今天天气不错...\\\",\\\"timestamp\\\":\\\"2025-10-21T11:00:00\\\"}\",\n  \"evidenceUrls\": \"[]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "反馈AI回答质量问题（类型：AI_POOR_QUALITY）"
+          }
+        },
+        {
+          "name": "3) 反馈系统Bug",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Bug报告提交成功');",
+                  "    console.log('📋 报告ID:', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"SYSTEM_BUG\",\n  \"targetType\": \"SYSTEM_FEATURE\",\n  \"targetId\": null,\n  \"description\": \"在QA模式下提交补充信息后系统崩溃，显示500错误\",\n  \"context\": \"{\\\"feature\\\":\\\"qa_supplement\\\",\\\"sessionId\\\":\\\"{{sessionId}}\\\",\\\"errorMessage\\\":\\\"500 Internal Server Error\\\",\\\"userAgent\\\":\\\"Mozilla/5.0...\\\",\\\"timestamp\\\":\\\"2025-10-21T11:30:00\\\"}\",\n  \"evidenceUrls\": \"[\\\"https://example.com/screenshot1.png\\\"]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "报告系统Bug或功能异常（类型：SYSTEM_BUG）"
+          }
+        },
+        {
+          "name": "4) 反馈关系目标策略问题",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"AI_POOR_QUALITY\",\n  \"targetType\": \"GOAL_STRATEGY\",\n  \"targetId\": \"{{goalId}}\",\n  \"description\": \"AI生成的行动计划不够具体，缺乏可操作性\",\n  \"context\": \"{\\\"goalId\\\":{{goalId}},\\\"goalDescription\\\":\\\"希望加深与联系人的关系\\\",\\\"aiStrategy\\\":\\\"建议多联系...\\\",\\\"timestamp\\\":\\\"2025-10-21T12:00:00\\\"}\",\n  \"evidenceUrls\": \"[]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "反馈关系目标AI策略的质量问题"
+          }
+        },
+        {
+          "name": "5) 反馈AI总结问题",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"AI_POOR_QUALITY\",\n  \"targetType\": \"AI_SUMMARY\",\n  \"targetId\": \"contact_{{contactId}}\",\n  \"description\": \"AI生成的总结遗漏了重要信息，且有明显的理解偏差\",\n  \"context\": \"{\\\"contactId\\\":{{contactId}},\\\"contactName\\\":\\\"张三\\\",\\\"originalDescription\\\":\\\"...\\\",\\\"aiSummary\\\":\\\"...\\\",\\\"timestamp\\\":\\\"2025-10-21T12:30:00\\\"}\",\n  \"evidenceUrls\": \"[]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "反馈AI总结的质量问题"
+          }
+        },
+        {
+          "name": "6) 查看我的反馈报告",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ 获取反馈列表成功');",
+                  "    console.log('📋 反馈数量:', response.data.length);",
+                  "    ",
+                  "    response.data.forEach((report, index) => {",
+                  "        console.log(`\\n反馈 ${index + 1}:`);",
+                  "        console.log('  类型:', report.reportType);",
+                  "        console.log('  目标:', report.targetType);",
+                  "        console.log('  目标ID:', report.targetId);",
+                  "        console.log('  状态:', report.status);",
+                  "        console.log('  提交时间:', report.createdAt);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/my-reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "my-reports"]
+            },
+            "description": "查看当前用户提交的所有反馈报告"
+          }
+        },
+        {
+          "name": "7) 查看待处理报告（管理员）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "pending"]
+            },
+            "description": "查看所有待处理的反馈报告（管理员功能）"
+          }
+        },
+        {
+          "name": "8) 查看所有报告（管理员）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "all"]
+            },
+            "description": "查看所有反馈报告记录（管理员功能）"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 Deepseek AI对话",
+      "description": "直接与Deepseek AI进行对话交互",
+      "item": [
+        {
+          "name": "1) AI问答（非流式）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ AI回答成功');",
+                  "    console.log('💬 回答:', response.data.answer);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"介绍一下你自己\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/ask",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "ask"]
+            },
+            "description": "与Deepseek AI进行非流式对话"
+          }
+        },
+        {
+          "name": "2) AI问答（流式）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('🌊 流式响应已开始');",
+                  "console.log('💬 请在Response窗口查看流式输出');",
+                  "console.log('ℹ️  注意：Postman可能不完全支持Server-Sent Events的实时显示');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"讲一个笑话\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/ask/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "ask", "stream"]
+            },
+            "description": "与Deepseek AI进行流式对话（Server-Sent Events）"
           }
         }
       ]

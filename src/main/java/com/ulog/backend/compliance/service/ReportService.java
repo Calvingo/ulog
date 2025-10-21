@@ -3,6 +3,7 @@ package com.ulog.backend.compliance.service;
 import com.ulog.backend.common.exception.BadRequestException;
 import com.ulog.backend.compliance.dto.ReportRequest;
 import com.ulog.backend.compliance.dto.ReportResponse;
+import com.ulog.backend.compliance.enums.ReportStatus;
 import com.ulog.backend.domain.compliance.UserReport;
 import com.ulog.backend.repository.UserReportRepository;
 import java.time.LocalDateTime;
@@ -25,28 +26,27 @@ public class ReportService {
     }
 
     /**
-     * 提交举报
+     * 提交AI内容反馈/系统问题报告
      */
     @Transactional
     public ReportResponse submitReport(Long reporterId, ReportRequest request) {
-        log.info("User {} submitting report of type {}", reporterId, request.getReportType());
-
-        // 验证举报类型
-        validateReportType(request.getReportType());
+        log.info("User {} submitting report: type={}, target={}, targetId={}", 
+            reporterId, request.getReportType(), request.getTargetType(), request.getTargetId());
 
         UserReport report = new UserReport();
         report.setReporterId(reporterId);
-        report.setReportedUserId(request.getReportedUserId());
-        report.setReportType(request.getReportType());
-        report.setReportCategory(request.getReportCategory());
-        report.setContent(request.getContent());
-        report.setEvidence(request.getEvidence());
-        report.setStatus("pending");
+        report.setReportType(request.getReportType().name());
+        report.setTargetType(request.getTargetType().name());
+        report.setTargetId(request.getTargetId());
+        report.setDescription(request.getDescription());
+        report.setContext(request.getContext());
+        report.setEvidenceUrls(request.getEvidenceUrls());
+        report.setStatus(ReportStatus.PENDING.name());
 
         UserReport saved = reportRepository.save(report);
         
-        // TODO: 发送通知给管理员
-        notifyAdmins(saved);
+        // 记录日志供后续分析
+        logReportForAnalysis(saved);
 
         return toResponse(saved);
     }
@@ -61,20 +61,12 @@ public class ReportService {
     }
 
     /**
-     * 获取针对某用户的举报
-     */
-    @Transactional(readOnly = true)
-    public List<ReportResponse> getReportsAgainstUser(Long userId) {
-        List<UserReport> reports = reportRepository.findByReportedUserIdOrderByCreatedAtDesc(userId);
-        return reports.stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    /**
      * 获取所有待处理的举报（管理员用）
      */
     @Transactional(readOnly = true)
     public List<ReportResponse> getPendingReports() {
-        List<UserReport> reports = reportRepository.findByStatusOrderByCreatedAtDesc("pending");
+        List<UserReport> reports = reportRepository.findByStatusOrderByCreatedAtDesc(
+            ReportStatus.PENDING.name());
         return reports.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -91,11 +83,12 @@ public class ReportService {
      * 更新举报状态（管理员用）
      */
     @Transactional
-    public ReportResponse updateReportStatus(Long reportId, String status, String adminNotes, Long adminId) {
+    public ReportResponse updateReportStatus(Long reportId, ReportStatus status, 
+                                            String adminNotes, Long adminId) {
         UserReport report = reportRepository.findById(reportId)
             .orElseThrow(() -> new BadRequestException("Report not found"));
 
-        report.setStatus(status);
+        report.setStatus(status.name());
         report.setAdminNotes(adminNotes);
         report.setProcessedBy(adminId);
         report.setProcessedAt(LocalDateTime.now());
@@ -107,41 +100,52 @@ public class ReportService {
     }
 
     /**
-     * 验证举报类型
+     * 记录举报信息用于分析
+     * 这些数据可以帮助：
+     * 1. 发现AI Prompt问题
+     * 2. 识别系统Bug
+     * 3. 收集产品改进建议
      */
-    private void validateReportType(String reportType) {
-        List<String> validTypes = List.of(
-            "inappropriate_content", "violation", "harassment", "spam", "other"
-        );
+    private void logReportForAnalysis(UserReport report) {
+        log.info("📊 Report Analysis Data: id={}, type={}, target={}, targetId={}", 
+            report.getId(), report.getReportType(), report.getTargetType(), report.getTargetId());
         
-        if (!validTypes.contains(reportType)) {
-            throw new BadRequestException("Invalid report type: " + reportType);
+        // 高优先级问题立即记录
+        if ("AI_INAPPROPRIATE_CONTENT".equals(report.getReportType())) {
+            log.warn("⚠️ CRITICAL: Inappropriate AI content reported! id={}, context={}", 
+                report.getId(), report.getContext());
         }
-    }
-
-    /**
-     * 通知管理员（TODO: 实现邮件或其他通知方式）
-     */
-    private void notifyAdmins(UserReport report) {
-        log.info("New report #{} submitted, admin notification needed", report.getId());
-        // TODO: 实现邮件通知或其他通知机制
     }
 
     /**
      * 转换为响应DTO
      */
     private ReportResponse toResponse(UserReport report) {
-        return new ReportResponse(
-            report.getId(),
-            report.getReporterId(),
-            report.getReportedUserId(),
-            report.getReportType(),
-            report.getReportCategory(),
-            report.getContent(),
-            report.getStatus(),
-            report.getCreatedAt(),
-            report.getProcessedAt()
+        ReportResponse response = new ReportResponse();
+        response.setId(report.getId());
+        response.setReporterId(report.getReporterId());
+        response.setReportType(
+            report.getReportType() != null 
+                ? com.ulog.backend.compliance.enums.ReportType.valueOf(report.getReportType()) 
+                : null
         );
+        response.setTargetType(
+            report.getTargetType() != null 
+                ? com.ulog.backend.compliance.enums.ReportTarget.valueOf(report.getTargetType()) 
+                : null
+        );
+        response.setTargetId(report.getTargetId());
+        response.setDescription(report.getDescription());
+        response.setContext(report.getContext());
+        response.setEvidenceUrls(report.getEvidenceUrls());
+        response.setStatus(
+            report.getStatus() != null 
+                ? ReportStatus.valueOf(report.getStatus()) 
+                : null
+        );
+        response.setAdminNotes(report.getAdminNotes());
+        response.setCreatedAt(report.getCreatedAt());
+        response.setProcessedAt(report.getProcessedAt());
+        return response;
     }
 }
-

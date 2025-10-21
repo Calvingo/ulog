@@ -1,34 +1,29 @@
 package com.ulog.backend.compliance.dto;
 
+import com.ulog.backend.compliance.enums.ReportStatus;
+import com.ulog.backend.compliance.enums.ReportTarget;
+import com.ulog.backend.compliance.enums.ReportType;
 import java.time.LocalDateTime;
 
+/**
+ * 举报响应DTO
+ */
 public class ReportResponse {
 
     private Long id;
     private Long reporterId;
-    private Long reportedUserId;
-    private String reportType;
-    private String reportCategory;
-    private String content;
-    private String status;
+    private ReportType reportType;
+    private ReportTarget targetType;
+    private String targetId;
+    private String description;
+    private String context;
+    private String evidenceUrls;
+    private ReportStatus status;
+    private String adminNotes;
     private LocalDateTime createdAt;
     private LocalDateTime processedAt;
 
     public ReportResponse() {
-    }
-
-    public ReportResponse(Long id, Long reporterId, Long reportedUserId, String reportType,
-                         String reportCategory, String content, String status, 
-                         LocalDateTime createdAt, LocalDateTime processedAt) {
-        this.id = id;
-        this.reporterId = reporterId;
-        this.reportedUserId = reportedUserId;
-        this.reportType = reportType;
-        this.reportCategory = reportCategory;
-        this.content = content;
-        this.status = status;
-        this.createdAt = createdAt;
-        this.processedAt = processedAt;
     }
 
     // Getters and Setters
@@ -48,44 +43,68 @@ public class ReportResponse {
         this.reporterId = reporterId;
     }
 
-    public Long getReportedUserId() {
-        return reportedUserId;
-    }
-
-    public void setReportedUserId(Long reportedUserId) {
-        this.reportedUserId = reportedUserId;
-    }
-
-    public String getReportType() {
+    public ReportType getReportType() {
         return reportType;
     }
 
-    public void setReportType(String reportType) {
+    public void setReportType(ReportType reportType) {
         this.reportType = reportType;
     }
 
-    public String getReportCategory() {
-        return reportCategory;
+    public ReportTarget getTargetType() {
+        return targetType;
     }
 
-    public void setReportCategory(String reportCategory) {
-        this.reportCategory = reportCategory;
+    public void setTargetType(ReportTarget targetType) {
+        this.targetType = targetType;
     }
 
-    public String getContent() {
-        return content;
+    public String getTargetId() {
+        return targetId;
     }
 
-    public void setContent(String content) {
-        this.content = content;
+    public void setTargetId(String targetId) {
+        this.targetId = targetId;
     }
 
-    public String getStatus() {
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getContext() {
+        return context;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
+    }
+
+    public String getEvidenceUrls() {
+        return evidenceUrls;
+    }
+
+    public void setEvidenceUrls(String evidenceUrls) {
+        this.evidenceUrls = evidenceUrls;
+    }
+
+    public ReportStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(ReportStatus status) {
         this.status = status;
+    }
+
+    public String getAdminNotes() {
+        return adminNotes;
+    }
+
+    public void setAdminNotes(String adminNotes) {
+        this.adminNotes = adminNotes;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -104,4 +123,3 @@ public class ReportResponse {
         this.processedAt = processedAt;
     }
 }
-

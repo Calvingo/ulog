@@ -35,12 +35,18 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
     }
 
     @Override
-    public SelfValue calculateSelfValue(Map<String, Object> collectedData) {
+    public SelfValue calculateSelfValue(String description) {
         try {
-            log.info("Starting synchronous self value calculation for data: {}", collectedData);
+            log.info("Starting synchronous self value calculation for description: {}", description);
+
+            // 检查description是否为空
+            if (description == null || description.trim().isEmpty()) {
+                log.warn("Description is empty, returning default self value");
+                return SelfValue.getDefaultSelfValue();
+            }
 
             // 构建 AI 评估 prompt
-            String prompt = PromptTemplates.buildSelfValueEvaluationPrompt(collectedData);
+            String prompt = PromptTemplates.buildSelfValueEvaluationPrompt(description);
             
             // 调用 Deepseek AI
             String aiResponse = deepseekService.askReasoner("", prompt)
@@ -66,13 +72,13 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
 
     @Override
     @Async("selfValueTaskExecutor")
-    public void calculateAndUpdateContactAsync(Long contactId, Map<String, Object> collectedData) {
+    public void calculateAndUpdateContactAsync(Long contactId, String description) {
         try {
-            log.info("Starting async self value calculation for contact {} with data: {}", 
-                contactId, collectedData);
+            log.info("Starting async self value calculation for contact {} with description: {}", 
+                contactId, description);
 
             // 计算 self value
-            SelfValue selfValue = calculateSelfValue(collectedData);
+            SelfValue selfValue = calculateSelfValue(description);
             String selfValueStr = SelfValue.format(selfValue);
 
             // 更新联系人
@@ -98,13 +104,13 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
 
     @Override
     @Async("selfValueTaskExecutor")
-    public void calculateAndUpdateUserAsync(Long userId, Map<String, Object> collectedData) {
+    public void calculateAndUpdateUserAsync(Long userId, String description) {
         try {
-            log.info("Starting async self value calculation for user {} with data: {}", 
-                userId, collectedData);
+            log.info("Starting async self value calculation for user {} with description: {}", 
+                userId, description);
 
             // 计算 self value
-            SelfValue selfValue = calculateSelfValue(collectedData);
+            SelfValue selfValue = calculateSelfValue(description);
             String selfValueStr = SelfValue.format(selfValue);
 
             // 更新用户

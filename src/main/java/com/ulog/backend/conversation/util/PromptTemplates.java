@@ -288,7 +288,9 @@ public class PromptTemplates {
     
     /**
      * 生成请求最低信息的问题
+     * @deprecated 未被使用，建议使用 buildMinimumInfoQuestionForUser 替代或删除
      */
+    @Deprecated
     public static String buildMinimumInfoQuestionPrompt(
         String contactName,
         Map<String, Object> collectedData
@@ -322,7 +324,9 @@ public class PromptTemplates {
     
     /**
      * QA模式：回答关于联系人的问题
+     * @deprecated 使用 buildBaseContactQaSystemPrompt + 原生messages数组代替
      */
+    @Deprecated
     public static String buildQaSystemPrompt(
         String contactName,
         String description,
@@ -435,7 +439,9 @@ public class PromptTemplates {
     
     /**
      * 构建最终回答生成Prompt
+     * @deprecated 现在使用原生messages数组代替
      */
+    @Deprecated
     public static String buildFinalAnswerPrompt(String question, String contactDesc, String userDesc) {
         return String.format("""
             【任务】基于双方描述回答问题
@@ -618,7 +624,9 @@ public class PromptTemplates {
     
     /**
      * 构建增强的用户自我QA回答Prompt（包含self_value和qa_history）
+     * @deprecated 使用 buildBaseUserSelfQaSystemPrompt + 原生messages数组代替
      */
+    @Deprecated
     public static String buildEnhancedUserSelfQaPrompt(
         String question,
         String userDesc,
@@ -684,20 +692,20 @@ public class PromptTemplates {
     /**
      * 构建 Self Value 评估 Prompt
      */
-    public static String buildSelfValueEvaluationPrompt(Map<String, Object> collectedData) {
+    public static String buildSelfValueEvaluationPrompt(String description) {
         StringBuilder prompt = new StringBuilder();
         
-        prompt.append("你是心理评估专家，请根据对话内容评估以下5个维度（1.0-5.0分）：\n\n");
+        prompt.append("你是心理评估专家，请根据以下描述信息评估该人的自我价值水平，从5个维度进行评分（1.0-5.0分）：\n\n");
         
         prompt.append("评估维度：\n");
-        prompt.append("1. 自尊水平 (selfEsteem): 自信程度、自我肯定\n");
-        prompt.append("2. 自我接纳 (selfAcceptance): 对自身缺点的态度\n");
-        prompt.append("3. 自我效能 (selfEfficacy): 对能力的信心\n");
-        prompt.append("4. 存在价值感 (existentialValue): 生命意义感\n");
-        prompt.append("5. 自我一致性 (selfConsistency): 言行一致性\n\n");
+        prompt.append("1. 自尊水平 (selfEsteem): 自信程度、自我肯定、自我价值感\n");
+        prompt.append("2. 自我接纳 (selfAcceptance): 对自身缺点的态度、自我宽容度\n");
+        prompt.append("3. 自我效能 (selfEfficacy): 对能力的信心、完成任务的能力感\n");
+        prompt.append("4. 存在价值感 (existentialValue): 生命意义感、人生目标感\n");
+        prompt.append("5. 自我一致性 (selfConsistency): 言行一致性、内外统一性\n\n");
         
-        prompt.append("对话数据：\n");
-        prompt.append(formatCollectedDataForPrompt(collectedData));
+        prompt.append("描述信息：\n");
+        prompt.append(description != null && !description.trim().isEmpty() ? description : "（暂无描述信息）");
         prompt.append("\n\n");
         
         prompt.append("请返回JSON格式：\n");
@@ -710,39 +718,20 @@ public class PromptTemplates {
         prompt.append("}\n\n");
         
         prompt.append("评分标准：\n");
-        prompt.append("- 1.0-2.0: 较低水平\n");
-        prompt.append("- 2.1-3.0: 中等偏下\n");
-        prompt.append("- 3.1-4.0: 中等偏上\n");
-        prompt.append("- 4.1-5.0: 较高水平\n\n");
+        prompt.append("- 1.0-2.0: 较低水平（明显缺乏自信、自我怀疑）\n");
+        prompt.append("- 2.1-3.0: 中等偏下（有一定自信但不稳定）\n");
+        prompt.append("- 3.1-4.0: 中等偏上（较为自信，自我价值感良好）\n");
+        prompt.append("- 4.1-5.0: 较高水平（高度自信，自我价值感很强）\n\n");
         
-        prompt.append("注意：\n");
+        prompt.append("评估指导：\n");
+        prompt.append("- 根据描述中的语言表达、行为模式、情感态度来判断\n");
         prompt.append("- 如果信息不足以判断某个维度，返回默认值3.0\n");
-        prompt.append("- 评分要客观、合理\n");
+        prompt.append("- 评分要客观、合理，基于描述内容而非主观臆测\n");
         prompt.append("- 只返回JSON，不要其他解释\n");
         
         return prompt.toString();
     }
 
-    /**
-     * 格式化收集的数据用于 Prompt
-     */
-    private static String formatCollectedDataForPrompt(Map<String, Object> collectedData) {
-        if (collectedData == null || collectedData.isEmpty()) {
-            return "无对话数据";
-        }
-        
-        StringBuilder formatted = new StringBuilder();
-        for (Map.Entry<String, Object> entry : collectedData.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            
-            if (value != null && !value.toString().trim().isEmpty()) {
-                formatted.append("- ").append(key).append(": ").append(value.toString()).append("\n");
-            }
-        }
-        
-        return formatted.toString();
-    }
     
     // ========== 用户自我信息收集提示词 ==========
     
@@ -905,7 +894,9 @@ public class PromptTemplates {
     
     /**
      * 用户自我QA的回答生成提示词
+     * @deprecated 使用 buildBaseUserSelfQaSystemPrompt + 原生messages数组代替
      */
+    @Deprecated
     public static String buildUserSelfQaAnswerPrompt(String question, String userDescription) {
         return String.format("""
             【任务】基于用户描述回答问题
@@ -944,6 +935,106 @@ public class PromptTemplates {
         if (missingInfo.contains("personality_characteristics")) { prompt.append("4. 性格特点（你觉得自己的性格如何？）\n"); }
         prompt.append("\n要求：\n1. 语气要理解用户想结束的心情\n2. 说明只需要再回答1个问题\n3. 问最重要的缺失信息\n4. 简短、友好\n5. 使用第二人称'你'\n\n只返回问题本身。");
         return prompt.toString();
+    }
+    
+    /**
+     * 构建将补充信息整合到描述中的Prompt
+     */
+    public static String buildIntegrateSupplementToDescriptionPrompt(
+        String originalDescription,
+        String supplementQuestion,
+        String supplementInfo
+    ) {
+        return String.format("""
+            【任务】将补充信息自然地整合到现有描述中
+            
+            【原始描述】
+            %s
+            
+            【AI的补充问题】
+            %s
+            
+            【用户补充的信息】
+            %s
+            
+            【整合要求】
+            1. 将补充信息自然地融入到原始描述中
+            2. 如果补充信息与现有信息冲突，以补充信息为准（更新覆盖）
+            3. 如果补充信息是新信息，添加到描述的合适位置
+            4. 保持描述的流畅性和自然性
+            5. 不要改变原始描述中其他未涉及的内容
+            6. 使用第三人称描述（对于联系人）
+            7. 不要添加用户没有明确提供的信息
+            8. 保持原有的描述风格和语气
+            9. 描述要完整、连贯，像是一段完整的文字
+            
+            【禁止行为】
+            - 不要编造或推测额外信息
+            - 不要删除原始描述中的有效信息
+            - 不要改变描述的整体结构
+            - 不要添加主观评价或判断
+            - 不要使用"根据补充信息"等提示性语言
+            - 不要分点列举，要写成连贯的段落
+            
+            【输出格式】
+            只返回更新后的完整描述文本，不要其他说明或解释。
+            """,
+            originalDescription != null && !originalDescription.trim().isEmpty() 
+                ? originalDescription 
+                : "（暂无描述）",
+            supplementQuestion,
+            supplementInfo
+        );
+    }
+    
+    /**
+     * 构建将补充信息整合到用户自我描述中的Prompt
+     */
+    public static String buildIntegrateSupplementToUserDescriptionPrompt(
+        String originalDescription,
+        String supplementQuestion,
+        String supplementInfo
+    ) {
+        return String.format("""
+            【任务】将补充信息自然地整合到现有的自我描述中
+            
+            【原始自我描述】
+            %s
+            
+            【AI的补充问题】
+            %s
+            
+            【用户补充的信息】
+            %s
+            
+            【整合要求】
+            1. 将补充信息自然地融入到原始描述中
+            2. 如果补充信息与现有信息冲突，以补充信息为准（更新覆盖）
+            3. 如果补充信息是新信息，添加到描述的合适位置
+            4. 保持描述的流畅性和自然性
+            5. 不要改变原始描述中其他未涉及的内容
+            6. 使用第一人称描述（"我"）
+            7. 不要添加用户没有明确提供的信息
+            8. 保持原有的描述风格和语气
+            9. 描述要完整、连贯，像是一段完整的自我介绍
+            
+            【禁止行为】
+            - 不要编造或推测额外信息
+            - 不要删除原始描述中的有效信息
+            - 不要改变描述的整体结构
+            - 不要添加主观评价或判断
+            - 不要使用"根据补充信息"等提示性语言
+            - 不要分点列举，要写成连贯的段落
+            
+            【输出格式】
+            只返回更新后的完整自我描述文本，不要其他说明或解释。
+            """,
+            originalDescription != null && !originalDescription.trim().isEmpty() 
+                ? originalDescription 
+                : "（暂无描述）",
+            supplementQuestion,
+            supplementInfo
+        );
     }
 }
 

@@ -24,6 +24,20 @@ public interface QaHistoryService {
     void addUserQaEntry(String sessionId, QaHistoryEntry entry);
     
     /**
+     * 更新联系人会话的最后一条QA历史记录
+     * @param sessionId 会话ID
+     * @param entry 更新后的QA对话条目
+     */
+    void updateLastContactQaEntry(String sessionId, QaHistoryEntry entry);
+    
+    /**
+     * 更新用户会话的最后一条QA历史记录
+     * @param sessionId 会话ID
+     * @param entry 更新后的QA对话条目
+     */
+    void updateLastUserQaEntry(String sessionId, QaHistoryEntry entry);
+    
+    /**
      * 获取联系人会话的QA历史
      * @param sessionId 会话ID
      * @return QA历史列表

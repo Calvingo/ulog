@@ -12,7 +12,6 @@ import com.ulog.backend.common.exception.NotFoundException;
 import com.ulog.backend.conversation.dto.QaResponse;
 import com.ulog.backend.conversation.dto.QaHistoryEntry;
 import com.ulog.backend.conversation.dto.SupplementAnalysis;
-import com.ulog.backend.conversation.dto.SupplementResult;
 import com.ulog.backend.conversation.enums.SessionStatus;
 import com.ulog.backend.conversation.util.PromptTemplates;
 import com.ulog.backend.domain.contact.Contact;
@@ -23,6 +22,7 @@ import com.ulog.backend.repository.ConversationSessionRepository;
 import com.ulog.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,7 +112,15 @@ public class QaService {
         log.info("Processing supplement for session {}, original question: {}", 
             sessionId, originalQuestion);
         
-        // 3. 不更新用户描述
+        // 3. 异步更新联系人描述（整合补充信息）
+        Contact contact = loadContact(session.getContactId(), userId);
+        asyncUpdateDescriptionWithSupplement(
+            contact,
+            originalQuestion,
+            supplementInfo
+        );
+        
+        log.info("Triggered async update for contact {} description with supplement info", contact.getId());
         
         // 4. 清空lastQuestion（问题已处理完毕）
         session.setLastQuestion(null);
@@ -238,7 +246,15 @@ public class QaService {
         // 生成补充信息的问题
         String supplementQuestion = infoSupplementService.generateSupplementQuestion(analysis);
         
-        log.info("Session {} needs supplement info for question: {}", 
+        // 立即保存部分QA历史（包含原始问题和补充问题）
+        QaHistoryEntry partialEntry = new QaHistoryEntry();
+        partialEntry.setQuestion(originalQuestion);
+        partialEntry.setSupplementQuestion(supplementQuestion);
+        partialEntry.setNeedsMoreInfo(true);
+        // answer和supplementAnswer待补充后填写
+        qaHistoryService.addContactQaEntry(session.getSessionId(), partialEntry);
+        
+        log.info("Session {} needs supplement info for question: {}, saved partial QA history", 
             session.getSessionId(), originalQuestion);
         
         return QaResponse.builder()
@@ -283,10 +299,11 @@ public class QaService {
         Contact contact = loadContact(session.getContactId(), session.getUserId());
         User user = loadUser(session.getUserId());
         
-        String answer = answerQuestionAboutContact(
+        // 直接使用原始description和补充信息生成答案，不等待description更新
+        String answer = answerQuestionAboutContactWithSupplement(
             originalQuestion, 
-            contact, 
-            user, 
+            contact.getDescription(), // 使用原始description
+            user.getDescription(),
             session.getSessionId(),
             supplementInfo
         );
@@ -313,6 +330,119 @@ public class QaService {
         userRepository.save(user);
         
         log.info("Updated user description for user {}", userId);
+    }
+    
+    /**
+     * 异步更新联系人描述（整合补充信息）
+     */
+    @Async
+    public void asyncUpdateDescriptionWithSupplement(
+        Contact contact, 
+        String supplementQuestion, 
+        String supplementInfo
+    ) {
+        try {
+            String prompt = PromptTemplates.buildIntegrateSupplementToDescriptionPrompt(
+                contact.getDescription(),
+                supplementQuestion, // 使用AI的补充问题
+                supplementInfo
+            );
+            
+            ChatCompletionRequest request = new ChatCompletionRequest();
+            request.setModel(deepseekProperties.getModel());
+            request.setMessages(List.of(
+                new ChatMessage("system", "你是一个专业的信息整合助手。"),
+                new ChatMessage("user", prompt)
+            ));
+            request.setTemperature(0.3); // 较低温度，保证稳定性
+            
+            ChatCompletionResponse response = deepseekClient.chat(request).block();
+            String updatedDescription = response.getChoices().get(0).getMessage().getContent().trim();
+            
+            // 更新联系人描述
+            contact.setDescription(updatedDescription);
+            contactRepository.save(contact);
+            
+            log.info("Async updated contact {} description with supplement info, original length: {}, new length: {}", 
+                contact.getId(),
+                contact.getDescription() != null ? contact.getDescription().length() : 0, 
+                updatedDescription.length());
+        } catch (Exception e) {
+            log.error("Failed to async update contact {} description: {}", contact.getId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 使用原始描述和补充信息直接回答问题的专用方法
+     */
+    private String answerQuestionAboutContactWithSupplement(
+        String question, 
+        String contactDescription,
+        String userDescription,
+        String sessionId,
+        String supplementInfo
+    ) {
+        // Step 1: 构建基础系统Prompt（不包含历史对话）
+        String systemPrompt = PromptTemplates.buildBaseContactQaSystemPrompt(
+            contactDescription,
+            "", // 不使用self_value，因为这是临时回答
+            userDescription,
+            "" // 不使用self_value，因为这是临时回答
+        );
+        
+        // Step 2: 构建原生多轮消息数组
+        List<ChatMessage> messages = new ArrayList<>();
+        
+        // 添加系统提示
+        messages.add(new ChatMessage("system", systemPrompt));
+        
+        // Step 3: 添加历史对话（原生格式）
+        List<QaHistoryEntry> qaHistory = qaHistoryService.getContactQaHistory(sessionId);
+        for (QaHistoryEntry entry : qaHistory) {
+            // 添加用户的历史问题
+            if (entry.getQuestion() != null && !entry.getQuestion().trim().isEmpty()) {
+                messages.add(new ChatMessage("user", entry.getQuestion()));
+            }
+            
+            // 如果有补充信息流程
+            if (entry.getNeedsMoreInfo() != null && entry.getNeedsMoreInfo()) {
+                // Deepseek的补充问题
+                if (entry.getSupplementQuestion() != null) {
+                    messages.add(new ChatMessage("assistant", entry.getSupplementQuestion()));
+                }
+                // 用户的补充回答
+                if (entry.getSupplementAnswer() != null) {
+                    messages.add(new ChatMessage("user", entry.getSupplementAnswer()));
+                }
+            }
+            
+            // 添加AI的历史回答
+            if (entry.getAnswer() != null) {
+                messages.add(new ChatMessage("assistant", entry.getAnswer()));
+            }
+        }
+        
+        // Step 4: 添加当前问题
+        messages.add(new ChatMessage("user", question));
+        
+        // Step 5: 添加补充信息作为额外的上下文
+        if (supplementInfo != null && !supplementInfo.trim().isEmpty()) {
+            messages.add(new ChatMessage("user", "补充信息：" + supplementInfo));
+        }
+        
+        // Step 6: 调用Deepseek
+        ChatCompletionRequest request = new ChatCompletionRequest();
+        request.setModel(deepseekProperties.getReasonerModel());
+        request.setMessages(messages);
+        request.setTemperature(0.7);
+        
+        log.info("Calling Deepseek with {} messages for session {} (with supplement)", 
+            messages.size(), sessionId);
+        
+        ChatCompletionResponse response = deepseekClient.chat(request).block();
+        String answer = response.getChoices().get(0).getMessage().getContent();
+        
+        return answer;
     }
     
     /**
@@ -394,24 +524,39 @@ public class QaService {
         ChatCompletionResponse response = deepseekClient.chat(request).block();
         String answer = response.getChoices().get(0).getMessage().getContent();
         
-        // Step 7: 保存QA历史
-        QaHistoryEntry qaEntry;
+        // Step 7: 保存或更新QA历史
         if (supplementInfo != null && !supplementInfo.trim().isEmpty()) {
-            // 有补充信息的情况
-            qaEntry = new QaHistoryEntry(
-                question,
-                answer,
-                "（系统请求补充信息）",
-                supplementInfo,
-                true
-            );
+            // 有补充信息的情况 - 更新最后一条历史记录
+            List<QaHistoryEntry> history = qaHistoryService.getContactQaHistory(sessionId);
+            if (!history.isEmpty()) {
+                QaHistoryEntry lastEntry = history.get(history.size() - 1);
+                // 更新补充回答和最终答案
+                lastEntry.setSupplementAnswer(supplementInfo);
+                lastEntry.setAnswer(answer);
+                qaHistoryService.updateLastContactQaEntry(sessionId, lastEntry);
+                
+                log.info("Updated last QA entry with supplement for session {}, question: {}", 
+                    sessionId, question);
+            } else {
+                // 如果历史为空（异常情况），创建新记录
+                log.warn("No history found when processing supplement, creating new entry for session {}", 
+                    sessionId);
+                QaHistoryEntry qaEntry = new QaHistoryEntry(
+                    question,
+                    answer,
+                    "（系统请求补充信息）",
+                    supplementInfo,
+                    true
+                );
+                qaHistoryService.addContactQaEntry(sessionId, qaEntry);
+            }
         } else {
-            // 直接回答的情况
-            qaEntry = new QaHistoryEntry(question, answer);
+            // 直接回答的情况 - 添加新记录
+            QaHistoryEntry qaEntry = new QaHistoryEntry(question, answer);
+            qaHistoryService.addContactQaEntry(sessionId, qaEntry);
+            
+            log.info("Saved new QA entry for session {}, question: {}", sessionId, question);
         }
-        qaHistoryService.addContactQaEntry(sessionId, qaEntry);
-        
-        log.info("Saved QA entry for session {}, question: {}", sessionId, question);
         
         return answer;
     }

@@ -7,6 +7,7 @@ import com.ulog.backend.common.exception.BadRequestException;
 import com.ulog.backend.contact.dto.ContactRequest;
 import com.ulog.backend.contact.dto.ContactResponse;
 import com.ulog.backend.contact.dto.ContactUpdateRequest;
+import com.ulog.backend.conversation.service.SelfValueCalculationService;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.user.User;
 import com.ulog.backend.repository.ContactRepository;
@@ -26,11 +27,13 @@ public class ContactService {
     private final ContactRepository contactRepository;
     private final UserRepository userRepository;
     private final AiSummaryService aiSummaryService;
+    private final SelfValueCalculationService selfValueCalculationService;
 
-    public ContactService(ContactRepository contactRepository, UserRepository userRepository, AiSummaryService aiSummaryService) {
+    public ContactService(ContactRepository contactRepository, UserRepository userRepository, AiSummaryService aiSummaryService, SelfValueCalculationService selfValueCalculationService) {
         this.contactRepository = contactRepository;
         this.userRepository = userRepository;
         this.aiSummaryService = aiSummaryService;
+        this.selfValueCalculationService = selfValueCalculationService;
     }
 
     @Transactional
@@ -38,6 +41,12 @@ public class ContactService {
         User owner = loadUser(userId);
         Contact contact = new Contact(owner, request.getName(), request.getDescription());
         contactRepository.save(contact);
+        
+        // 🔥 异步计算并更新 selfValue（基于description）
+        if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
+            selfValueCalculationService.calculateAndUpdateContactAsync(contact.getId(), request.getDescription());
+        }
+        
         return map(contact);
     }
 
@@ -66,6 +75,8 @@ public class ContactService {
         }
         if (request.getDescription() != null) {
             contact.setDescription(request.getDescription());
+            // 🔥 异步重新计算 selfValue（基于新的description）
+            selfValueCalculationService.calculateAndUpdateContactAsync(contactId, request.getDescription());
         }
         if (request.getAiSummary() != null) {
             contact.setAiSummary(request.getAiSummary());

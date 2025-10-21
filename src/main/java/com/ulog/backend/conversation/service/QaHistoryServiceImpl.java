@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ulog.backend.conversation.dto.QaHistoryEntry;
-import com.ulog.backend.conversation.enums.SessionStatus;
 import com.ulog.backend.domain.conversation.ConversationSession;
 import com.ulog.backend.domain.conversation.UserConversationSession;
 import com.ulog.backend.repository.ConversationSessionRepository;
@@ -114,6 +113,58 @@ public class QaHistoryServiceImpl implements QaHistoryService {
         } catch (JsonProcessingException e) {
             log.error("Failed to parse QA history for user session {}: {}", sessionId, e.getMessage(), e);
             return new ArrayList<>();
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void updateLastContactQaEntry(String sessionId, QaHistoryEntry entry) {
+        try {
+            ConversationSession session = conversationSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Conversation session not found: " + sessionId));
+            
+            List<QaHistoryEntry> history = getContactQaHistory(sessionId);
+            if (history.isEmpty()) {
+                log.warn("No QA history to update for contact session {}", sessionId);
+                return;
+            }
+            
+            // 更新最后一条记录
+            history.set(history.size() - 1, entry);
+            
+            String qaHistoryJson = objectMapper.writeValueAsString(history);
+            session.setQaHistory(qaHistoryJson);
+            conversationSessionRepository.save(session);
+            
+            log.info("Updated last QA entry for contact session {}", sessionId);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to update QA history for contact session {}: {}", sessionId, e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void updateLastUserQaEntry(String sessionId, QaHistoryEntry entry) {
+        try {
+            UserConversationSession session = userConversationSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("User conversation session not found: " + sessionId));
+            
+            List<QaHistoryEntry> history = getUserQaHistory(sessionId);
+            if (history.isEmpty()) {
+                log.warn("No QA history to update for user session {}", sessionId);
+                return;
+            }
+            
+            // 更新最后一条记录
+            history.set(history.size() - 1, entry);
+            
+            String qaHistoryJson = objectMapper.writeValueAsString(history);
+            session.setQaHistory(qaHistoryJson);
+            userConversationSessionRepository.save(session);
+            
+            log.info("Updated last QA entry for user session {}", sessionId);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to update QA history for user session {}: {}", sessionId, e.getMessage(), e);
         }
     }
     
