@@ -29,9 +29,9 @@ CREATE TABLE conversation_sessions (
     FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE,
     FOREIGN KEY (contact_id) REFERENCES contacts(cid) ON DELETE SET NULL,
     
-    INDEX idx_user_status (user_id, status),
-    INDEX idx_contact_id (contact_id),
-    INDEX idx_created_at (created_at),
-    INDEX idx_last_active (last_active_at)
+    INDEX idx_cs_user_status (user_id, status),
+    INDEX idx_cs_contact_id (contact_id),
+    INDEX idx_cs_created_at (created_at),
+    INDEX idx_cs_last_active (last_active_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对话会话表';
 

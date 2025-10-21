@@ -7,7 +7,8 @@ import com.ulog.backend.common.exception.BadRequestException;
 import com.ulog.backend.contact.dto.ContactRequest;
 import com.ulog.backend.contact.dto.ContactResponse;
 import com.ulog.backend.contact.dto.ContactUpdateRequest;
-import com.ulog.backend.conversation.service.SelfValueCalculationService;
+import com.ulog.backend.conversation.event.ContactCreatedEvent;
+import com.ulog.backend.conversation.event.ContactDescriptionUpdatedEvent;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.user.User;
 import com.ulog.backend.repository.ContactRepository;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +29,13 @@ public class ContactService {
     private final ContactRepository contactRepository;
     private final UserRepository userRepository;
     private final AiSummaryService aiSummaryService;
-    private final SelfValueCalculationService selfValueCalculationService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public ContactService(ContactRepository contactRepository, UserRepository userRepository, AiSummaryService aiSummaryService, SelfValueCalculationService selfValueCalculationService) {
+    public ContactService(ContactRepository contactRepository, UserRepository userRepository, AiSummaryService aiSummaryService, ApplicationEventPublisher eventPublisher) {
         this.contactRepository = contactRepository;
         this.userRepository = userRepository;
         this.aiSummaryService = aiSummaryService;
-        this.selfValueCalculationService = selfValueCalculationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -42,9 +44,10 @@ public class ContactService {
         Contact contact = new Contact(owner, request.getName(), request.getDescription());
         contactRepository.save(contact);
         
-        // 🔥 异步计算并更新 selfValue（基于description）
+        // 🔥 发布事件：触发 self value 计算（基于description）
         if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
-            selfValueCalculationService.calculateAndUpdateContactAsync(contact.getId(), request.getDescription());
+            log.debug("Publishing ContactCreatedEvent for contact {}", contact.getId());
+            eventPublisher.publishEvent(new ContactCreatedEvent(contact.getId(), request.getDescription()));
         }
         
         return map(contact);
@@ -75,8 +78,9 @@ public class ContactService {
         }
         if (request.getDescription() != null) {
             contact.setDescription(request.getDescription());
-            // 🔥 异步重新计算 selfValue（基于新的description）
-            selfValueCalculationService.calculateAndUpdateContactAsync(contactId, request.getDescription());
+            // 🔥 发布事件：触发 self value 重新计算（基于新的description）
+            log.debug("Publishing ContactDescriptionUpdatedEvent for contact {}", contactId);
+            eventPublisher.publishEvent(new ContactDescriptionUpdatedEvent(contactId, request.getDescription()));
         }
         if (request.getAiSummary() != null) {
             contact.setAiSummary(request.getAiSummary());
@@ -105,19 +109,6 @@ public class ContactService {
 
     private ContactResponse map(Contact contact) {
         return new ContactResponse(contact.getId(), contact.getName(), contact.getDescription(), contact.getAiSummary(), contact.getCreatedAt(), contact.getUpdatedAt());
-    }
-
-    @Transactional
-    public void updateSelfValue(Long contactId, String selfValue) {
-        log.info("Updating self value for contact {}: {}", contactId, selfValue);
-        
-        Contact contact = contactRepository.findById(contactId)
-            .orElseThrow(() -> new RuntimeException("Contact not found: " + contactId));
-        
-        contact.setSelfValue(selfValue);
-        contactRepository.save(contact);
-        
-        log.info("Successfully updated self value for contact {}", contactId);
     }
 
     private void populateSummaryIfNeeded(Contact contact, String description, String requestedSummary) {

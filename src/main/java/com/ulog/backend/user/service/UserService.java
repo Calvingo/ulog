@@ -4,7 +4,7 @@ import com.ulog.backend.common.api.ErrorCode;
 import com.ulog.backend.common.exception.ApiException;
 import com.ulog.backend.common.exception.BadRequestException;
 import com.ulog.backend.compliance.service.OperationLogService;
-import com.ulog.backend.conversation.service.SelfValueCalculationService;
+import com.ulog.backend.conversation.event.UserDescriptionUpdatedEvent;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.goal.RelationshipGoal;
 import com.ulog.backend.domain.goal.UserPushToken;
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +39,7 @@ public class UserService {
     private final UserPushTokenRepository userPushTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OperationLogService operationLogService;
-    private final SelfValueCalculationService selfValueCalculationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder,
@@ -47,7 +48,7 @@ public class UserService {
                       UserPushTokenRepository userPushTokenRepository,
                       RefreshTokenRepository refreshTokenRepository,
                       OperationLogService operationLogService,
-                      SelfValueCalculationService selfValueCalculationService) {
+                      ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.contactRepository = contactRepository;
@@ -55,7 +56,7 @@ public class UserService {
         this.userPushTokenRepository = userPushTokenRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.operationLogService = operationLogService;
-        this.selfValueCalculationService = selfValueCalculationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -165,9 +166,10 @@ public class UserService {
         user.setDescription(description);
         userRepository.save(user);
         
-        // 🔥 异步重新计算 selfValue（基于新的description）
+        // 🔥 发布事件：触发 self value 重新计算（基于新的description）
         if (description != null && !description.trim().isEmpty()) {
-            selfValueCalculationService.calculateAndUpdateUserAsync(userId, description);
+            log.debug("Publishing UserDescriptionUpdatedEvent for user {}", userId);
+            eventPublisher.publishEvent(new UserDescriptionUpdatedEvent(userId, description));
         }
     }
     
@@ -179,22 +181,6 @@ public class UserService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ApiException(ErrorCode.AUTH_UNAUTHORIZED, "user not found"));
         return user.getDescription();
-    }
-
-    /**
-     * 更新用户自我价值评分
-     */
-    @Transactional
-    public void updateUserSelfValue(Long userId, String selfValue) {
-        log.info("Updating self value for user {}: {}", userId, selfValue);
-        
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-        
-        user.setSelfValue(selfValue);
-        userRepository.save(user);
-        
-        log.info("Successfully updated self value for user {}", userId);
     }
 
     private UserResponse mapToResponse(User user, boolean maskPhone) {

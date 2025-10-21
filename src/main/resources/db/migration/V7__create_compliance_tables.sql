@@ -6,8 +6,8 @@ CREATE TABLE user_privacy_consent (
     consent_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ip_address VARCHAR(45),
     user_agent VARCHAR(512),
-    INDEX idx_user_id (user_id),
-    INDEX idx_consent_time (consent_time),
+    INDEX idx_upc_user_id (user_id),
+    INDEX idx_upc_consent_time (consent_time),
     FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -22,9 +22,9 @@ CREATE TABLE content_moderation_log (
     risk_details TEXT COMMENT '风险详情（JSON格式）',
     provider VARCHAR(50) COMMENT '审核服务商：aliyun, tencent, local',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_created_at (created_at),
-    INDEX idx_moderation_result (moderation_result),
+    INDEX idx_cml_user_id (user_id),
+    INDEX idx_cml_created_at (created_at),
+    INDEX idx_cml_moderation_result (moderation_result),
     FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -43,12 +43,12 @@ CREATE TABLE user_report (
     processed_at TIMESTAMP NULL COMMENT '处理时间',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_reporter_id (reporter_id),
-    INDEX idx_reported_user_id (reported_user_id),
-    INDEX idx_status (status),
-    INDEX idx_created_at (created_at),
-    FOREIGN KEY (reporter_id) REFERENCES users(uid) ON DELETE CASCADE,
-    FOREIGN KEY (reported_user_id) REFERENCES users(uid) ON DELETE SET NULL
+    INDEX idx_ur_reporter_id (reporter_id),
+    INDEX idx_ur_reported_user_id (reported_user_id),
+    INDEX idx_ur_status (status),
+    INDEX idx_ur_created_at (created_at),
+    CONSTRAINT fk_ur_reporter FOREIGN KEY (reporter_id) REFERENCES users(uid) ON DELETE CASCADE,
+    CONSTRAINT fk_ur_reported_user FOREIGN KEY (reported_user_id) REFERENCES users(uid) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 操作日志表
@@ -64,9 +64,9 @@ CREATE TABLE operation_log (
     status_code INT COMMENT 'HTTP状态码',
     error_message TEXT COMMENT '错误信息（如有）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_operation_type (operation_type),
-    INDEX idx_created_at (created_at),
+    INDEX idx_ol_user_id (user_id),
+    INDEX idx_ol_operation_type (operation_type),
+    INDEX idx_ol_created_at (created_at),
     FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -4,14 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ulog.backend.ai.DeepseekService;
 import com.ulog.backend.conversation.dto.SelfValue;
+import com.ulog.backend.conversation.event.ContactCreatedEvent;
+import com.ulog.backend.conversation.event.ContactDescriptionUpdatedEvent;
+import com.ulog.backend.conversation.event.UserDescriptionUpdatedEvent;
 import com.ulog.backend.conversation.util.PromptTemplates;
-import com.ulog.backend.contact.service.ContactService;
-import com.ulog.backend.user.service.UserService;
+import com.ulog.backend.repository.ContactRepository;
+import com.ulog.backend.repository.UserRepository;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SelfValueCalculationServiceImpl implements SelfValueCalculationService {
@@ -19,18 +24,18 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
     private static final Logger log = LoggerFactory.getLogger(SelfValueCalculationServiceImpl.class);
 
     private final DeepseekService deepseekService;
-    private final ContactService contactService;
-    private final UserService userService;
+    private final ContactRepository contactRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     public SelfValueCalculationServiceImpl(
             DeepseekService deepseekService,
-            ContactService contactService,
-            UserService userService,
+            ContactRepository contactRepository,
+            UserRepository userRepository,
             ObjectMapper objectMapper) {
         this.deepseekService = deepseekService;
-        this.contactService = contactService;
-        this.userService = userService;
+        this.contactRepository = contactRepository;
+        this.userRepository = userRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -70,9 +75,43 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
         }
     }
 
-    @Override
+    /**
+     * 监听联系人创建事件
+     */
+    @EventListener
     @Async("selfValueTaskExecutor")
-    public void calculateAndUpdateContactAsync(Long contactId, String description) {
+    @Transactional
+    public void handleContactCreated(ContactCreatedEvent event) {
+        log.info("Handling ContactCreatedEvent for contact {}", event.getContactId());
+        calculateAndUpdateContact(event.getContactId(), event.getDescription());
+    }
+
+    /**
+     * 监听联系人描述更新事件
+     */
+    @EventListener
+    @Async("selfValueTaskExecutor")
+    @Transactional
+    public void handleContactDescriptionUpdated(ContactDescriptionUpdatedEvent event) {
+        log.info("Handling ContactDescriptionUpdatedEvent for contact {}", event.getContactId());
+        calculateAndUpdateContact(event.getContactId(), event.getDescription());
+    }
+
+    /**
+     * 监听用户描述更新事件
+     */
+    @EventListener
+    @Async("selfValueTaskExecutor")
+    @Transactional
+    public void handleUserDescriptionUpdated(UserDescriptionUpdatedEvent event) {
+        log.info("Handling UserDescriptionUpdatedEvent for user {}", event.getUserId());
+        calculateAndUpdateUser(event.getUserId(), event.getDescription());
+    }
+
+    /**
+     * 计算并更新联系人的 self value
+     */
+    private void calculateAndUpdateContact(Long contactId, String description) {
         try {
             log.info("Starting async self value calculation for contact {} with description: {}", 
                 contactId, description);
@@ -81,10 +120,15 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
             SelfValue selfValue = calculateSelfValue(description);
             String selfValueStr = SelfValue.format(selfValue);
 
-            // 更新联系人
-            contactService.updateSelfValue(contactId, selfValueStr);
-            
-            log.info("Successfully updated self value for contact {}: {}", contactId, selfValueStr);
+            // 直接通过 repository 更新联系人
+            contactRepository.findById(contactId).ifPresentOrElse(
+                contact -> {
+                    contact.setSelfValue(selfValueStr);
+                    contactRepository.save(contact);
+                    log.info("Successfully updated self value for contact {}: {}", contactId, selfValueStr);
+                },
+                () -> log.warn("Contact {} not found, cannot update self value", contactId)
+            );
 
         } catch (Exception e) {
             log.error("Failed to calculate and update self value for contact {}: {}", 
@@ -93,8 +137,11 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
             // 失败时使用默认值
             try {
                 String defaultSelfValue = SelfValue.format(SelfValue.getDefaultSelfValue());
-                contactService.updateSelfValue(contactId, defaultSelfValue);
-                log.info("Applied default self value for contact {}: {}", contactId, defaultSelfValue);
+                contactRepository.findById(contactId).ifPresent(contact -> {
+                    contact.setSelfValue(defaultSelfValue);
+                    contactRepository.save(contact);
+                    log.info("Applied default self value for contact {}: {}", contactId, defaultSelfValue);
+                });
             } catch (Exception updateEx) {
                 log.error("Failed to apply default self value for contact {}: {}", 
                     contactId, updateEx.getMessage(), updateEx);
@@ -102,9 +149,10 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
         }
     }
 
-    @Override
-    @Async("selfValueTaskExecutor")
-    public void calculateAndUpdateUserAsync(Long userId, String description) {
+    /**
+     * 计算并更新用户的 self value
+     */
+    private void calculateAndUpdateUser(Long userId, String description) {
         try {
             log.info("Starting async self value calculation for user {} with description: {}", 
                 userId, description);
@@ -113,10 +161,15 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
             SelfValue selfValue = calculateSelfValue(description);
             String selfValueStr = SelfValue.format(selfValue);
 
-            // 更新用户
-            userService.updateUserSelfValue(userId, selfValueStr);
-            
-            log.info("Successfully updated self value for user {}: {}", userId, selfValueStr);
+            // 直接通过 repository 更新用户
+            userRepository.findById(userId).ifPresentOrElse(
+                user -> {
+                    user.setSelfValue(selfValueStr);
+                    userRepository.save(user);
+                    log.info("Successfully updated self value for user {}: {}", userId, selfValueStr);
+                },
+                () -> log.warn("User {} not found, cannot update self value", userId)
+            );
 
         } catch (Exception e) {
             log.error("Failed to calculate and update self value for user {}: {}", 
@@ -125,13 +178,34 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
             // 失败时使用默认值
             try {
                 String defaultSelfValue = SelfValue.format(SelfValue.getDefaultSelfValue());
-                userService.updateUserSelfValue(userId, defaultSelfValue);
-                log.info("Applied default self value for user {}: {}", userId, defaultSelfValue);
+                userRepository.findById(userId).ifPresent(user -> {
+                    user.setSelfValue(defaultSelfValue);
+                    userRepository.save(user);
+                    log.info("Applied default self value for user {}: {}", userId, defaultSelfValue);
+                });
             } catch (Exception updateEx) {
                 log.error("Failed to apply default self value for user {}: {}", 
                     userId, updateEx.getMessage(), updateEx);
             }
         }
+    }
+
+    @Override
+    @Deprecated
+    public void calculateAndUpdateContactAsync(Long contactId, String description) {
+        // 保留接口方法以兼容，但实际已不再使用
+        // 现在通过事件驱动方式触发
+        log.warn("Deprecated method calculateAndUpdateContactAsync called, consider using event-driven approach");
+        calculateAndUpdateContact(contactId, description);
+    }
+
+    @Override
+    @Deprecated
+    public void calculateAndUpdateUserAsync(Long userId, String description) {
+        // 保留接口方法以兼容，但实际已不再使用
+        // 现在通过事件驱动方式触发
+        log.warn("Deprecated method calculateAndUpdateUserAsync called, consider using event-driven approach");
+        calculateAndUpdateUser(userId, description);
     }
 
     /**

@@ -13,9 +13,9 @@ CREATE TABLE user_conversation_sessions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     
-    INDEX idx_user_status (user_id, status),
-    INDEX idx_user_id (user_id),
-    INDEX idx_created_at (created_at),
+    INDEX idx_ucs_user_status (user_id, status),
+    INDEX idx_ucs_user_id (user_id),
+    INDEX idx_ucs_created_at (created_at),
     
          FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
