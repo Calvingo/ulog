@@ -24,6 +24,7 @@ import com.ulog.backend.repository.ActionPlanRepository;
 import com.ulog.backend.repository.ContactRepository;
 import com.ulog.backend.repository.RelationshipGoalRepository;
 import com.ulog.backend.repository.UserRepository;
+import com.ulog.backend.compliance.service.OperationLogService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,7 @@ public class RelationshipGoalService {
     private final GoalAiService goalAiService;
     private final ReminderService reminderService;
     private final ObjectMapper objectMapper;
+    private final OperationLogService operationLogService;
 
     public RelationshipGoalService(RelationshipGoalRepository goalRepository,
                                    ActionPlanRepository actionPlanRepository,
@@ -52,7 +54,8 @@ public class RelationshipGoalService {
                                    UserRepository userRepository,
                                    GoalAiService goalAiService,
                                    ReminderService reminderService,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   OperationLogService operationLogService) {
         this.goalRepository = goalRepository;
         this.actionPlanRepository = actionPlanRepository;
         this.contactRepository = contactRepository;
@@ -60,6 +63,7 @@ public class RelationshipGoalService {
         this.goalAiService = goalAiService;
         this.reminderService = reminderService;
         this.objectMapper = objectMapper;
+        this.operationLogService = operationLogService;
     }
 
     @Transactional
@@ -70,6 +74,11 @@ public class RelationshipGoalService {
         // 创建目标
         RelationshipGoal goal = new RelationshipGoal(contact, user, request.getGoalDescription());
         goalRepository.save(goal);
+        
+        // 记录关系目标创建日志
+        operationLogService.logOperation(userId, "goal_create", 
+            String.format("Created relationship goal: %s for contact: %s", 
+                goal.getId(), contact.getName()));
 
         // 调用AI生成策略和行动计划
         try {

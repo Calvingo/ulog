@@ -21,6 +21,7 @@ import com.ulog.backend.repository.ConversationSessionRepository;
 import com.ulog.backend.repository.PinRepository;
 import com.ulog.backend.repository.UserConversationSessionRepository;
 import com.ulog.backend.repository.UserRepository;
+import com.ulog.backend.compliance.service.OperationLogService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public class PinService {
     private final ContactRepository contactRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final OperationLogService operationLogService;
 
     public PinService(PinRepository pinRepository,
                      ConversationSessionRepository conversationSessionRepository,
@@ -51,7 +53,8 @@ public class PinService {
                      QaHistoryService qaHistoryService,
                      ContactRepository contactRepository,
                      UserRepository userRepository,
-                     ObjectMapper objectMapper) {
+                     ObjectMapper objectMapper,
+                     OperationLogService operationLogService) {
         this.pinRepository = pinRepository;
         this.conversationSessionRepository = conversationSessionRepository;
         this.userConversationSessionRepository = userConversationSessionRepository;
@@ -59,6 +62,7 @@ public class PinService {
         this.contactRepository = contactRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.operationLogService = operationLogService;
     }
 
     @Transactional
@@ -151,6 +155,10 @@ public class PinService {
         pinRepository.save(pin);
         log.info("Updated pin {} for user {}", pinId, userId);
 
+        // 记录 Pin 更新日志
+        operationLogService.logOperation(userId, "pin_update", 
+            String.format("Updated pin: %s", pinId));
+
         return mapToResponse(pin);
     }
 
@@ -161,6 +169,10 @@ public class PinService {
 
         pinRepository.delete(pin);
         log.info("Deleted pin {} for user {}", pinId, userId);
+        
+        // 记录 Pin 删除日志
+        operationLogService.logOperation(userId, "pin_delete", 
+            String.format("Deleted pin: %s", pinId));
     }
 
     @Transactional(readOnly = true)
@@ -201,6 +213,11 @@ public class PinService {
         log.info("Created pin from contact QA session {} index {} for user {}", 
                  session.getSessionId(), request.getQaIndex(), userId);
 
+        // 记录 Pin 创建日志
+        operationLogService.logOperation(userId, "pin_create", 
+            String.format("Created pin: %s from contact session: %s, qaIndex: %d", 
+                pin.getId(), session.getSessionId(), request.getQaIndex()));
+
         return mapToResponse(pin);
     }
 
@@ -236,6 +253,11 @@ public class PinService {
         pinRepository.save(pin);
         log.info("Created pin from user QA session {} index {} for user {}", 
                  session.getSessionId(), request.getQaIndex(), userId);
+
+        // 记录 Pin 创建日志
+        operationLogService.logOperation(userId, "pin_create", 
+            String.format("Created pin: %s from user session: %s, qaIndex: %d", 
+                pin.getId(), session.getSessionId(), request.getQaIndex()));
 
         return mapToResponse(pin);
     }

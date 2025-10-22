@@ -13,6 +13,7 @@ import com.ulog.backend.common.exception.NotFoundException;
 import com.ulog.backend.conversation.dto.QaHistoryEntry;
 import com.ulog.backend.conversation.dto.UserQaResponse;
 import com.ulog.backend.conversation.enums.SessionStatus;
+import com.ulog.backend.conversation.event.UserDescriptionUpdatedEvent;
 import com.ulog.backend.conversation.util.PromptTemplates;
 import com.ulog.backend.domain.conversation.UserConversationSession;
 import com.ulog.backend.domain.user.User;
@@ -20,6 +21,7 @@ import com.ulog.backend.repository.UserConversationSessionRepository;
 import com.ulog.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class UserQaServiceImpl implements UserQaService {
     private final QaHistoryService qaHistoryService;
     private final ObjectMapper objectMapper;
     private final DeepseekProperties deepseekProperties;
+    private final ApplicationEventPublisher eventPublisher;
     
     public UserQaServiceImpl(
         UserConversationSessionRepository sessionRepository,
@@ -48,7 +51,8 @@ public class UserQaServiceImpl implements UserQaService {
         AiSummaryService aiSummaryService,
         QaHistoryService qaHistoryService,
         ObjectMapper objectMapper,
-        DeepseekProperties deepseekProperties
+        DeepseekProperties deepseekProperties,
+        ApplicationEventPublisher eventPublisher
     ) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
@@ -57,6 +61,7 @@ public class UserQaServiceImpl implements UserQaService {
         this.qaHistoryService = qaHistoryService;
         this.objectMapper = objectMapper;
         this.deepseekProperties = deepseekProperties;
+        this.eventPublisher = eventPublisher;
     }
     
     @Override
@@ -441,6 +446,10 @@ public class UserQaServiceImpl implements UserQaService {
             // 更新用户描述
             user.setDescription(updatedDescription);
             userRepository.save(user);
+            
+            // 🔥 发布事件：触发 self value 重新计算（基于更新后的description）
+            log.debug("Publishing UserDescriptionUpdatedEvent for user {}", user.getId());
+            eventPublisher.publishEvent(new UserDescriptionUpdatedEvent(user.getId(), updatedDescription));
             
             log.info("Async updated user {} description with supplement info, original length: {}, new length: {}", 
                 user.getId(),

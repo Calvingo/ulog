@@ -14,6 +14,7 @@ import com.ulog.backend.repository.UserRepository;
 import com.ulog.backend.security.JwtTokenProvider;
 import com.ulog.backend.user.dto.UserResponse;
 import com.ulog.backend.util.RateLimiterService;
+import com.ulog.backend.compliance.service.OperationLogService;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -34,8 +35,9 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final RateLimiterService rateLimiterService;
     private final SmsCodeService smsCodeService;
+    private final OperationLogService operationLogService;
 
-    public AuthService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider, JwtProperties jwtProperties, RateLimiterService rateLimiterService, SmsCodeService smsCodeService) {
+    public AuthService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider, JwtProperties jwtProperties, RateLimiterService rateLimiterService, SmsCodeService smsCodeService, OperationLogService operationLogService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +45,7 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
         this.rateLimiterService = rateLimiterService;
         this.smsCodeService = smsCodeService;
+        this.operationLogService = operationLogService;
     }
 
     @Transactional
@@ -56,6 +59,11 @@ public class AuthService {
         }
         User user = new User(request.getPhone(), passwordEncoder.encode(request.getPassword()), request.getName());
         userRepository.save(user);
+        
+        // 记录用户注册日志
+        operationLogService.logOperation(user.getId(), "user_register", 
+            String.format("New user registered: %s (phone: %s)", user.getId(), user.getPhone()));
+        
         return buildAuthResponse(user);
     }
 
@@ -72,9 +80,17 @@ public class AuthService {
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             handleFailedLogin(user);
+            // 记录登录失败日志
+            operationLogService.logOperation(user.getId(), "login_failed", 
+                String.format("Login failed for user %s (phone: %s)", user.getId(), user.getPhone()));
             throw new ApiException(ErrorCode.LOGIN_FAILED, "invalid phone or password");
         }
         resetLoginState(user);
+        
+        // 记录登录成功日志
+        operationLogService.logOperation(user.getId(), "user_login", 
+            String.format("User %s (phone: %s) logged in successfully", user.getId(), user.getPhone()));
+        
         return buildAuthResponse(user);
     }
 

@@ -82,6 +82,16 @@ public class UserService {
         if (request.getAiSummary() != null) {
             user.setAiSummary(request.getAiSummary());
         }
+        
+        // 保存用户到数据库
+        userRepository.save(user);
+        
+        // 🔥 发布事件：触发 self value 重新计算（基于description）
+        if (request.getDescription() != null && !request.getDescription().trim().isEmpty()) {
+            log.debug("Publishing UserDescriptionUpdatedEvent for user {}", user.getId());
+            eventPublisher.publishEvent(new UserDescriptionUpdatedEvent(user.getId(), request.getDescription()));
+        }
+        
         return mapToResponse(user, false);
     }
 

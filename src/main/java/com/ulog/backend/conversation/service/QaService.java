@@ -13,7 +13,10 @@ import com.ulog.backend.conversation.dto.QaResponse;
 import com.ulog.backend.conversation.dto.QaHistoryEntry;
 import com.ulog.backend.conversation.dto.SupplementAnalysis;
 import com.ulog.backend.conversation.enums.SessionStatus;
+import com.ulog.backend.conversation.event.ContactDescriptionUpdatedEvent;
+import com.ulog.backend.conversation.event.UserDescriptionUpdatedEvent;
 import com.ulog.backend.conversation.util.PromptTemplates;
+import com.ulog.backend.compliance.service.OperationLogService;
 import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.conversation.ConversationSession;
 import com.ulog.backend.domain.user.User;
@@ -22,6 +25,7 @@ import com.ulog.backend.repository.ConversationSessionRepository;
 import com.ulog.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +47,8 @@ public class QaService {
     private final QaHistoryService qaHistoryService;
     private final ObjectMapper objectMapper;
     private final DeepseekProperties deepseekProperties;
+    private final ApplicationEventPublisher eventPublisher;
+    private final OperationLogService operationLogService;
     
     public QaService(
         ConversationSessionRepository sessionRepository,
@@ -53,7 +59,9 @@ public class QaService {
         InfoSupplementService infoSupplementService,
         QaHistoryService qaHistoryService,
         ObjectMapper objectMapper,
-        DeepseekProperties deepseekProperties
+        DeepseekProperties deepseekProperties,
+        ApplicationEventPublisher eventPublisher,
+        OperationLogService operationLogService
     ) {
         this.sessionRepository = sessionRepository;
         this.contactRepository = contactRepository;
@@ -64,6 +72,8 @@ public class QaService {
         this.qaHistoryService = qaHistoryService;
         this.objectMapper = objectMapper;
         this.deepseekProperties = deepseekProperties;
+        this.eventPublisher = eventPublisher;
+        this.operationLogService = operationLogService;
     }
     
     /**
@@ -75,6 +85,11 @@ public class QaService {
         ConversationSession session = validateSession(sessionId, userId);
         Contact contact = loadContact(session.getContactId(), userId);
         User user = loadUser(userId);
+        
+        // 记录 AI 对话开始日志
+        operationLogService.logOperation(userId, "ai_conversation", 
+            String.format("AI conversation started - session: %s, contact: %s, question: %s", 
+                sessionId, contact.getName(), question.length() > 50 ? question.substring(0, 50) + "..." : question));
         
         // 2. 分析信息需求
         SupplementAnalysis analysis = infoSupplementService.analyzeInfoNeeds(
@@ -329,6 +344,10 @@ public class QaService {
         user.setDescription(updatedDescription);
         userRepository.save(user);
         
+        // 🔥 发布事件：触发 self value 重新计算（基于更新后的description）
+        log.debug("Publishing UserDescriptionUpdatedEvent for user {}", userId);
+        eventPublisher.publishEvent(new UserDescriptionUpdatedEvent(userId, updatedDescription));
+        
         log.info("Updated user description for user {}", userId);
     }
     
@@ -362,6 +381,10 @@ public class QaService {
             // 更新联系人描述
             contact.setDescription(updatedDescription);
             contactRepository.save(contact);
+            
+            // 🔥 发布事件：触发 self value 重新计算（基于更新后的description）
+            log.debug("Publishing ContactDescriptionUpdatedEvent for contact {}", contact.getId());
+            eventPublisher.publishEvent(new ContactDescriptionUpdatedEvent(contact.getId(), updatedDescription));
             
             log.info("Async updated contact {} description with supplement info, original length: {}, new length: {}", 
                 contact.getId(),
@@ -441,6 +464,40 @@ public class QaService {
         
         ChatCompletionResponse response = deepseekClient.chat(request).block();
         String answer = response.getChoices().get(0).getMessage().getContent();
+        
+        // Step 7: 保存或更新QA历史
+        if (supplementInfo != null && !supplementInfo.trim().isEmpty()) {
+            // 有补充信息的情况 - 更新最后一条历史记录
+            List<QaHistoryEntry> history = qaHistoryService.getContactQaHistory(sessionId);
+            if (!history.isEmpty()) {
+                QaHistoryEntry lastEntry = history.get(history.size() - 1);
+                // 更新补充回答和最终答案
+                lastEntry.setSupplementAnswer(supplementInfo);
+                lastEntry.setAnswer(answer);
+                qaHistoryService.updateLastContactQaEntry(sessionId, lastEntry);
+                
+                log.info("Updated last QA entry with supplement for session {}, question: {}", 
+                    sessionId, question);
+            } else {
+                // 如果历史为空（异常情况），创建新记录
+                log.warn("No history found when processing supplement, creating new entry for session {}", 
+                    sessionId);
+                QaHistoryEntry qaEntry = new QaHistoryEntry(
+                    question,
+                    answer,
+                    "（系统请求补充信息）",
+                    supplementInfo,
+                    true
+                );
+                qaHistoryService.addContactQaEntry(sessionId, qaEntry);
+            }
+        } else {
+            // 直接回答的情况 - 添加新记录
+            QaHistoryEntry qaEntry = new QaHistoryEntry(question, answer);
+            qaHistoryService.addContactQaEntry(sessionId, qaEntry);
+            
+            log.info("Saved new QA entry for session {}, question: {}", sessionId, question);
+        }
         
         return answer;
     }
