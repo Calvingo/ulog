@@ -3311,9 +3311,6 @@
             }
           ],
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "GET",
             "header": [],
             "url": {
@@ -3393,7 +3390,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"version\": \"1.0\"\n}"
+              "raw": "{\n  \"policyVersion\": \"1.0\",\n  \"accepted\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/privacy/consent",
