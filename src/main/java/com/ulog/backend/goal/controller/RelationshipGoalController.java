@@ -2,11 +2,13 @@ package com.ulog.backend.goal.controller;
 
 import com.ulog.backend.common.api.ApiResponse;
 import com.ulog.backend.goal.dto.ActionPlanResponse;
+import com.ulog.backend.goal.dto.CreateActionPlanRequest;
 import com.ulog.backend.goal.dto.CreateGoalRequest;
 import com.ulog.backend.goal.dto.GoalDetailResponse;
 import com.ulog.backend.goal.dto.GoalResponse;
 import com.ulog.backend.goal.dto.ReminderResponse;
 import com.ulog.backend.goal.dto.UpdateActionPlanAdoptionRequest;
+import com.ulog.backend.goal.dto.UpdateActionPlanRequest;
 import com.ulog.backend.goal.dto.UpdateActionPlanStatusRequest;
 import com.ulog.backend.goal.dto.UpdateGoalRequest;
 import com.ulog.backend.goal.service.RelationshipGoalService;
@@ -121,6 +123,37 @@ public class RelationshipGoalController {
             @PathVariable Long goalId) {
         GoalDetailResponse response = goalService.regenerateStrategy(principal.getUserId(), goalId);
         return ApiResponse.success(response);
+    }
+
+    @PostMapping("/{goalId}/action-plans")
+    @Operation(summary = "创建行动计划", description = "为指定目标手动创建行动计划")
+    public ApiResponse<ActionPlanResponse> createActionPlan(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long goalId,
+            @Valid @RequestBody CreateActionPlanRequest request) {
+        ActionPlanResponse response = goalService.createActionPlan(principal.getUserId(), goalId, request);
+        return ApiResponse.success(response);
+    }
+
+    @PutMapping("/{goalId}/action-plans/{planId}")
+    @Operation(summary = "更新行动计划", description = "更新指定行动计划的基本信息")
+    public ApiResponse<ActionPlanResponse> updateActionPlan(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long goalId,
+            @PathVariable Long planId,
+            @Valid @RequestBody UpdateActionPlanRequest request) {
+        ActionPlanResponse response = goalService.updateActionPlan(principal.getUserId(), planId, request);
+        return ApiResponse.success(response);
+    }
+
+    @DeleteMapping("/{goalId}/action-plans/{planId}")
+    @Operation(summary = "删除行动计划", description = "软删除指定的行动计划")
+    public ApiResponse<Void> deleteActionPlan(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long goalId,
+            @PathVariable Long planId) {
+        goalService.deleteActionPlan(principal.getUserId(), planId);
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/reminders/upcoming")

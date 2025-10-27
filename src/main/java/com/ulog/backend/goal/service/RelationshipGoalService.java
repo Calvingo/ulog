@@ -1,6 +1,5 @@
 package com.ulog.backend.goal.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ulog.backend.ai.GoalAiService;
 import com.ulog.backend.ai.dto.AiActionPlanItem;
 import com.ulog.backend.ai.dto.AiGoalStrategyResponse;
@@ -11,13 +10,14 @@ import com.ulog.backend.domain.contact.Contact;
 import com.ulog.backend.domain.goal.ActionPlan;
 import com.ulog.backend.domain.goal.RelationshipGoal;
 import com.ulog.backend.domain.goal.enums.ActionPlanStatus;
-import com.ulog.backend.domain.goal.enums.GoalStatus;
 import com.ulog.backend.domain.user.User;
 import com.ulog.backend.goal.dto.ActionPlanResponse;
+import com.ulog.backend.goal.dto.CreateActionPlanRequest;
 import com.ulog.backend.goal.dto.CreateGoalRequest;
 import com.ulog.backend.goal.dto.GoalDetailResponse;
 import com.ulog.backend.goal.dto.GoalResponse;
 import com.ulog.backend.goal.dto.UpdateActionPlanAdoptionRequest;
+import com.ulog.backend.goal.dto.UpdateActionPlanRequest;
 import com.ulog.backend.goal.dto.UpdateActionPlanStatusRequest;
 import com.ulog.backend.goal.dto.UpdateGoalRequest;
 import com.ulog.backend.repository.ActionPlanRepository;
@@ -45,7 +45,6 @@ public class RelationshipGoalService {
     private final UserRepository userRepository;
     private final GoalAiService goalAiService;
     private final ReminderService reminderService;
-    private final ObjectMapper objectMapper;
     private final OperationLogService operationLogService;
 
     public RelationshipGoalService(RelationshipGoalRepository goalRepository,
@@ -54,7 +53,6 @@ public class RelationshipGoalService {
                                    UserRepository userRepository,
                                    GoalAiService goalAiService,
                                    ReminderService reminderService,
-                                   ObjectMapper objectMapper,
                                    OperationLogService operationLogService) {
         this.goalRepository = goalRepository;
         this.actionPlanRepository = actionPlanRepository;
@@ -62,7 +60,6 @@ public class RelationshipGoalService {
         this.userRepository = userRepository;
         this.goalAiService = goalAiService;
         this.reminderService = reminderService;
-        this.objectMapper = objectMapper;
         this.operationLogService = operationLogService;
     }
 
@@ -281,6 +278,100 @@ public class RelationshipGoalService {
         }
 
         return getGoal(userId, goalId);
+    }
+
+    @Transactional
+    public ActionPlanResponse createActionPlan(Long userId, Long goalId, CreateActionPlanRequest request) {
+        RelationshipGoal goal = findOwnedGoal(userId, goalId);
+        
+        // 获取当前最大的orderIndex
+        List<ActionPlan> existingPlans = actionPlanRepository.findAllByGoalAndDeletedFalseOrderByOrderIndexAsc(goal);
+        int maxOrderIndex = existingPlans.stream()
+            .mapToInt(ActionPlan::getOrderIndex)
+            .max()
+            .orElse(-1);
+        
+        // 创建新的action plan
+        ActionPlan plan = new ActionPlan();
+        plan.setGoal(goal);
+        plan.setTitle(request.getTitle());
+        plan.setDescription(request.getDescription());
+        plan.setScheduledTime(request.getScheduledTime());
+        plan.setIsAdopted(request.getIsAdopted());
+        plan.setOrderIndex(maxOrderIndex + 1);
+        plan.setStatus(ActionPlanStatus.PENDING);
+        plan.setDeleted(Boolean.FALSE);
+        
+        actionPlanRepository.save(plan);
+        
+        // 如果采纳了，创建提醒
+        if (Boolean.TRUE.equals(plan.getIsAdopted())) {
+            reminderService.createRemindersForActionPlan(plan);
+        }
+        
+        log.info("Created manual action plan {} for goal {} by user {}", plan.getId(), goalId, userId);
+        
+        return mapActionPlanToResponse(plan);
+    }
+
+    @Transactional
+    public ActionPlanResponse updateActionPlan(Long userId, Long planId, UpdateActionPlanRequest request) {
+        ActionPlan plan = actionPlanRepository.findByIdAndDeletedFalse(planId)
+            .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "Action plan not found"));
+
+        // 验证所有权
+        if (!plan.getGoal().getUser().getId().equals(userId)) {
+            throw new ApiException(ErrorCode.FORBIDDEN, "Cannot update another user's action plan");
+        }
+
+        boolean scheduledTimeChanged = false;
+        
+        if (request.getTitle() != null) {
+            plan.setTitle(request.getTitle());
+        }
+        
+        if (request.getDescription() != null) {
+            plan.setDescription(request.getDescription());
+        }
+        
+        if (request.getScheduledTime() != null) {
+            if (!request.getScheduledTime().equals(plan.getScheduledTime())) {
+                scheduledTimeChanged = true;
+            }
+            plan.setScheduledTime(request.getScheduledTime());
+        }
+
+        actionPlanRepository.save(plan);
+        
+        // 如果时间改变了且计划被采纳，需要更新提醒
+        if (scheduledTimeChanged && Boolean.TRUE.equals(plan.getIsAdopted())) {
+            reminderService.cancelRemindersForActionPlan(plan);
+            reminderService.createRemindersForActionPlan(plan);
+        }
+        
+        log.info("Updated action plan {} for user {}", planId, userId);
+
+        return mapActionPlanToResponse(plan);
+    }
+
+    @Transactional
+    public void deleteActionPlan(Long userId, Long planId) {
+        ActionPlan plan = actionPlanRepository.findByIdAndDeletedFalse(planId)
+            .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "Action plan not found"));
+
+        // 验证所有权
+        if (!plan.getGoal().getUser().getId().equals(userId)) {
+            throw new ApiException(ErrorCode.FORBIDDEN, "Cannot delete another user's action plan");
+        }
+
+        // 取消相关提醒
+        reminderService.cancelRemindersForActionPlan(plan);
+        
+        // 软删除
+        plan.setDeleted(Boolean.TRUE);
+        actionPlanRepository.save(plan);
+        
+        log.info("Deleted action plan {} for user {}", planId, userId);
     }
 
     private List<ActionPlan> createActionPlans(RelationshipGoal goal, 

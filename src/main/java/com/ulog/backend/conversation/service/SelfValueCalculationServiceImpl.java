@@ -55,7 +55,7 @@ public class SelfValueCalculationServiceImpl implements SelfValueCalculationServ
             
             // 调用 Deepseek AI
             String aiResponse = deepseekService.askReasoner("", prompt)
-                .timeout(java.time.Duration.ofSeconds(10))
+                .timeout(java.time.Duration.ofSeconds(120))
                 .block();
 
             if (aiResponse == null || aiResponse.trim().isEmpty()) {

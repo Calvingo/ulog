@@ -4,6 +4,8 @@ import com.ulog.backend.common.api.ApiResponse;
 import com.ulog.backend.conversation.dto.*;
 import com.ulog.backend.conversation.service.InfoCollectionService;
 import com.ulog.backend.conversation.service.QaService;
+import com.ulog.backend.domain.conversation.ConversationSession;
+import com.ulog.backend.repository.ConversationSessionRepository;
 import com.ulog.backend.security.UserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -11,19 +13,25 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/conversation")
 public class ConversationController {
     
     private final InfoCollectionService infoCollectionService;
     private final QaService qaService;
+    private final ConversationSessionRepository sessionRepository;
     
     public ConversationController(
         InfoCollectionService infoCollectionService,
-        QaService qaService
+        QaService qaService,
+        ConversationSessionRepository sessionRepository
     ) {
         this.infoCollectionService = infoCollectionService;
         this.qaService = qaService;
+        this.sessionRepository = sessionRepository;
     }
     
     // ========== 信息收集模式 ==========
@@ -146,6 +154,44 @@ public class ConversationController {
     ) {
         qaService.endSession(sessionId, principal.getUserId());
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+    
+    /**
+     * 获取用户会话列表
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<ApiResponse<List<SessionInfo>>> getUserSessions(
+        @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        List<ConversationSession> sessions = sessionRepository.findByUserId(principal.getUserId());
+        
+        List<SessionInfo> sessionInfos = sessions.stream()
+            .map(session -> new SessionInfo(
+                session.getSessionId(),
+                session.getContactId(),
+                session.getContactName(),
+                session.getStatus(),
+                calculateProgress(session),
+                session.getCreatedAt(),
+                session.getLastActiveAt()
+            ))
+            .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(ApiResponse.success(sessionInfos));
+    }
+    
+    /**
+     * 计算会话进度
+     */
+    private Integer calculateProgress(ConversationSession session) {
+        // 简单的进度计算逻辑，可以根据实际需求调整
+        if ("COMPLETED".equals(session.getStatus())) {
+            return 100;
+        } else if ("ACTIVE".equals(session.getStatus())) {
+            return 50; // 假设进行中的会话进度为50%
+        } else {
+            return 0;
+        }
     }
 }
 
