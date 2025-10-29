@@ -79,10 +79,11 @@ public class RelationshipGoalService {
 
         // 调用AI生成策略和行动计划
         try {
-            String contactInfo = buildContactInfo(contact);
-            String userInfo = buildUserInfo(user);
+            String contactName = contact.getName();
+            String userName = user.getName();
+            String relationshipAnalysis = contact.getAiSummary();
             AiGoalStrategyResponse aiResponse = goalAiService
-                .generateGoalStrategy(contactInfo, userInfo, request.getGoalDescription())
+                .generateGoalStrategy(contactName, userName, relationshipAnalysis, request.getGoalDescription())
                 .block();
 
             if (aiResponse != null) {
@@ -241,10 +242,11 @@ public class RelationshipGoalService {
         Contact contact = goal.getContact();
 
         try {
-            String contactInfo = buildContactInfo(contact);
-            String userInfo = buildUserInfo(goal.getUser());
+            String contactName = contact.getName();
+            String userName = goal.getUser().getName();
+            String relationshipAnalysis = contact.getAiSummary();
             AiGoalStrategyResponse aiResponse = goalAiService
-                .generateGoalStrategy(contactInfo, userInfo, goal.getGoalDescription())
+                .generateGoalStrategy(contactName, userName, relationshipAnalysis, goal.getGoalDescription())
                 .block();
 
             if (aiResponse != null) {
@@ -388,36 +390,6 @@ public class RelationshipGoalService {
         }
 
         return actionPlans;
-    }
-
-    private String buildContactInfo(Contact contact) {
-        StringBuilder info = new StringBuilder();
-        info.append("姓名：").append(contact.getName()).append("\n");
-        
-        if (contact.getDescription() != null && !contact.getDescription().isBlank()) {
-            info.append("描述：").append(contact.getDescription()).append("\n");
-        }
-        
-        if (contact.getSelfValue() != null && !contact.getSelfValue().isBlank()) {
-            info.append("对我的价值/定位：").append(contact.getSelfValue()).append("\n");
-        }
-        
-        return info.toString();
-    }
-
-    private String buildUserInfo(User user) {
-        StringBuilder info = new StringBuilder();
-        info.append("姓名：").append(user.getName()).append("\n");
-        
-        if (user.getDescription() != null && !user.getDescription().isBlank()) {
-            info.append("描述：").append(user.getDescription()).append("\n");
-        }
-        
-        if (user.getSelfValue() != null && !user.getSelfValue().isBlank()) {
-            info.append("我的价值观/定位：").append(user.getSelfValue()).append("\n");
-        }
-        
-        return info.toString();
     }
 
     private RelationshipGoal findOwnedGoal(Long userId, Long goalId) {

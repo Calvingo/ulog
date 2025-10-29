@@ -124,7 +124,15 @@ public class ContactService {
     }
 
     private ContactResponse map(Contact contact) {
-        return new ContactResponse(contact.getId(), contact.getName(), contact.getDescription(), contact.getAiSummary(), contact.getCreatedAt(), contact.getUpdatedAt());
+        return new ContactResponse(
+            contact.getId(), 
+            contact.getName(), 
+            contact.getDescription(), 
+            contact.getAiSummary(), 
+            contact.getInteractionSuggestions(),
+            contact.getCreatedAt(), 
+            contact.getUpdatedAt()
+        );
     }
 
     private void populateSummaryIfNeeded(Contact contact, String description, String requestedSummary) {

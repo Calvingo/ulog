@@ -15,6 +15,7 @@ import com.ulog.backend.contact.dto.ContactResponse;
 import com.ulog.backend.contact.service.ContactService;
 import com.ulog.backend.conversation.dto.ExtractionResult;
 import com.ulog.backend.conversation.dto.MessageResponse;
+import com.ulog.backend.conversation.dto.QuestionModule;
 import com.ulog.backend.conversation.dto.StartCollectionResponse;
 import com.ulog.backend.conversation.enums.SessionStatus;
 import com.ulog.backend.conversation.util.PromptTemplates;
@@ -39,42 +40,78 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     private final ObjectMapper objectMapper;
     private final DeepseekProperties deepseekProperties;
     
-    // 收集维度定义 - 基于专业框架
-    private static final List<String> COLLECTION_DIMENSIONS = List.of(
-        // 系统1: 基本画像系统
-        "基本信息",
-        "社会角色", 
-        "生活方式",
-        "社交风格",
-        "性格特质",
-        "自我价值",
-        
-        // 系统2: 心理与人格系统
-        "核心动机",
-        "情绪模式",
-        "决策风格",
-        
-        // 系统3: 关系体验系统
-        "互动频率",
-        "互动能量",
-        "信任水平",
-        "价值互惠",
-        "关系边界",
-        "关系母型",
-        
-        // 系统4: 时间与发展系统
-        "关系起点",
-        "关系长度",
-        "成长趋势",
-        "临界事件",
-        "未来潜力",
-        
-        // 系统5: 价值与意义系统
-        "角色标签",
-        "关系功能",
-        "自我影响",
-        "社交位置",
-        "投入产出"
+    // 固定问卷模块定义
+    private static final List<QuestionModule> QUESTION_MODULES = List.of(
+        new QuestionModule(
+            "opening",
+            "开篇介绍",
+            "很高兴与你共创TA的信息档案。这份问卷旨在帮助您系统地梳理与记录您对TA的了解，将感性的印象与零散的标签转化为清晰的数据画像，从而在未来辅助你与TA更默契、高效的协作与互动。\n\n现在请静心在脑海里回想一下TA的形象，自由描述一段你的印象里TA是个什么样的人？\n\n提示：问卷使用语音输入会更加高效便捷。请根据您的真实了解与观察填写，如果不确定部分可以跳过并在未来经过观察进一步补充。",
+            "自由描述一段你的印象里TA是个什么样的人？",
+            List.of()
+        ),
+        new QuestionModule(
+            "basic_info",
+            "首先让我先认识一下TA吧",
+            "首先让我先认识一下TA吧\nTA的年龄段、性别、常驻城市和家乡是？TA的教育和专业背景是？如果可以，请描述TA的原生家庭氛围以及当前的亲密关系（如婚姻、子女）状况。\n关键词提示： #年龄 #性别 #生日 #城市 #出生地 #教育 #专业 #原生家庭 #婚姻 #子女",
+            null,
+            List.of("年龄", "性别", "生日", "城市", "出生地", "教育", "专业", "原生家庭", "婚姻", "子女")
+        ),
+        new QuestionModule(
+            "social_identity",
+            "社会身份",
+            "社会身份通常在人际交往中扮演重要角色，\nTA从事什么类型的工作？在其领域内，TA更接近\"资深专家\"、\"实力干将\"还是\"潜力新人\"？除了主业，TA还有哪些重要的身份标签或资源（如人脉、信息、渠道）？\n关键词提示： #工作类型 #行业地位 #收入区间 #身份标签 #社会影响力 #财富 #资源禀赋",
+            null,
+            List.of("工作类型", "行业地位", "收入区间", "身份标签", "社会影响力", "财富", "资源禀赋")
+        ),
+        new QuestionModule(
+            "lifestyle",
+            "生活方式与兴趣爱好",
+            "离开社会身份，生活方式与兴趣爱好会反应一个人的真实个性，\nTA是\"晨型人\"还是\"夜猫子\"？TA有哪些固定的休闲爱好与健康习惯（运动、饮食）？在消费上，TA更看重\"性价比\"还是\"品质与体验\"？TA的时间和金钱主要投入在哪些方面？\n关键词提示： #爱好 #休闲偏好 #钱都花在哪 #作息性格 #运动频率 #饮食习惯 #消费品类 #休闲偏好 #通勤方式 #周末行为",
+            null,
+            List.of("爱好", "休闲偏好", "钱都花在哪", "作息性格", "运动频率", "饮食习惯", "消费品类", "通勤方式", "周末行为")
+        ),
+        new QuestionModule(
+            "social_style",
+            "社交风格",
+            "社交风格也是一个人性格的侧面映射，\nTA在社交中是\"充电\"型还是\"耗电\"型？TA更偏爱线上互动还是线下见面？通常维持多大的社交圈子（1对1、小群、大圈）？\n关键词提示： #社交能量 #社交主动性 #线上线下比例 #平台偏好 #群体尺寸偏好 #社交活动频率 #关系维护方式",
+            null,
+            List.of("社交能量", "社交主动性", "线上线下比例", "平台偏好", "群体尺寸偏好", "社交活动频率", "关系维护方式")
+        ),
+        new QuestionModule(
+            "personality",
+            "内心特质",
+            "社交风格往往是一个人内心的特质的显化，\nTA在压力下的第一反应是\"独立解决\"、\"寻求支持\"还是\"需要独处\"？在深度关系中TA会呈现出\"安全、依恋、回避、混乱\"的哪一种心理特质？对于人际关系TA的合作或交往倾向于\"合作、竞争、依附、照顾、交易、控制\"中的哪一种方式？\n关键词提示： #MBTI #Big5 #认知水平 #认知模式 #风险偏好 #情绪稳定性 #反应风格 #压力下首反应 #安抚策略 #情绪恢复时长 #禁忌触发词 #高效安抚词 #依恋类型",
+            null,
+            List.of("MBTI", "Big5", "认知水平", "认知模式", "风险偏好", "情绪稳定性", "反应风格", "压力下首反应", "安抚策略", "情绪恢复时长", "禁忌触发词", "高效安抚词", "依恋类型")
+        ),
+        new QuestionModule(
+            "decision_style",
+            "决策风格",
+            "决策风格也是内心特质的直观表现，\nTA做决策时更依赖\"数据与分析\"还是\"直觉与感受\"？风格是\"快速果断\"还是\"深思熟虑\"？在拍板前，TA必须了解的几条关键信息是什么？\n关键词提示： #决策主导 #信息最少集 #时间窗口 #复盘习惯 #试错预算 #决策阈值",
+            null,
+            List.of("决策主导", "信息最少集", "时间窗口", "复盘习惯", "试错预算", "决策阈值")
+        ),
+        new QuestionModule(
+            "self_value",
+            "自我价值",
+            "如果我们再深入的探究一下TA的内心世界，我是谁、我凭什么值得被肯定、以及我如何与世界连接是最本质的核心问题，\n据你的观察TA是如何看待自己的，如果1-5分（5分为最高），您认为TA在这几个维度分别可以打几分以及为什么？如果可以清告诉我更多你的观察。\n自信： 对自身能力的信任感。\n自尊：对外界评价的反应。\n自我接纳： 对自身优缺点的接纳程度。\n目标感： 清楚自己的人生方向。\n内外一致： 说话行为与内心想法相符的程度\n\n关键词提示： #自尊 #自我接纳 #自我效能 #存在价值感 #自我一致性",
+            null,
+            List.of("自尊", "自我接纳", "自我效能", "存在价值感", "自我一致性")
+        ),
+        new QuestionModule(
+            "core_motivation",
+            "核心动机与需求",
+            "完成了你对TA自我价值的评分，我们再来看看TA的核心动机与需求\n在\"安全感、归属感、成就感、自主权、意义感、爱与亲密\"中，你认为哪几项是TA当前最核心的追求？当前最能驱动TA行动的具体事物或目标是什么？如果可以清告诉我更多你的观察。\n关键词提示： #安全 #归属 #成就 #自主 #意义 #爱与亲密 #兴趣爱好 #个人时间分配 #当前最强驱动 #典型诱因 #典型阻碍",
+            null,
+            List.of("安全", "归属", "成就", "自主", "意义", "爱与亲密", "兴趣爱好", "个人时间分配", "当前最强驱动", "典型诱因", "典型阻碍")
+        ),
+        new QuestionModule(
+            "value_flow",
+            "价值与能量的流动",
+            "人际关系的本质是价值与能量的流动，\n在你与TA的关系中，你能为TA稳定提供的核心价值是什么（如：情感支持、资源对接、专业建议）？同样，TA能为你带来哪些你所珍视的价值？为了关系健康持久，你们需要注意哪些边界或限制？\n关键词提示： #价值类型 #关键场景 #替代性评估 #最小可行承诺 #边界条件 #情绪价值 #物质价值 #精神共鸣 #信息交换 #功能性关系 #能量互动",
+            null,
+            List.of("价值类型", "关键场景", "替代性评估", "最小可行承诺", "边界条件", "情绪价值", "物质价值", "精神共鸣", "信息交换", "功能性关系", "能量互动")
+        )
     );
     
     // 维度到要素的映射 - 基于专业框架
@@ -141,12 +178,13 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         // 1. 创建会话
         String sessionId = "sess_" + UUID.randomUUID().toString().replace("-", "");
         ConversationSession session = new ConversationSession(sessionId, userId, contactName);
-        session.setCurrentDimension(COLLECTION_DIMENSIONS.get(0));
+        QuestionModule firstModule = QUESTION_MODULES.get(0);
+        session.setCurrentDimension(firstModule.getModuleId());
         session.setCompletedDimensions("[]");
         session.setCollectedData("{}");
         session.setConversationHistory("[]");
         
-        // 2. 生成第一个问题
+        // 2. 生成第一个问题（开篇介绍）
         String firstQuestion = generateFirstQuestion(contactName);
         session.setLastQuestion(firstQuestion);
         
@@ -160,7 +198,7 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             sessionId,
             firstQuestion,
             0,
-            COLLECTION_DIMENSIONS.get(0)
+            firstModule.getTitle()
         );
     }
     
@@ -228,30 +266,45 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             return handleEndIntent(session, extraction, collectedData, localWantsToEnd);
         }
         
-        // 9. 正常流程：决定下一个维度
+        // 9. 正常流程：决定下一个模块
         boolean shouldContinueCurrent = extraction.isShouldContinueCurrentQuestion();
-        String nextDimension;
+        String nextModuleId;
+        boolean isNewModule = false;
         
         if (shouldContinueCurrent) {
-            // 继续当前维度，不标记完成
-            nextDimension = session.getCurrentDimension();
+            // 继续当前模块，不标记完成
+            nextModuleId = session.getCurrentDimension();
         } else {
-            // 切换到下一个维度，标记当前完成
-            markDimensionCompleted(session, session.getCurrentDimension());
-            nextDimension = getNextDimension(session);
+            // 切换到下一个模块，标记当前完成
+            markModuleCompleted(session, session.getCurrentDimension());
+            nextModuleId = getNextModule(session);
+            isNewModule = !nextModuleId.equals(session.getCurrentDimension());
         }
         
         // 10. 生成下一个问题
-        String nextQuestion = generateNextQuestion(
-            session.getContactName(),
-            nextDimension,
-            getCompletedDimensions(session),
-            collectedData,
-            userMessage
-        );
+        QuestionModule currentModule = getModuleById(nextModuleId);
+        String nextQuestion;
+        
+        if (isNewModule) {
+            // 新模块：显示开场文本
+            nextQuestion = currentModule.getOpeningText();
+            // 如果模块有默认问题，添加到开场文本后
+            if (currentModule.getDefaultQuestion() != null) {
+                nextQuestion += "\n\n" + currentModule.getDefaultQuestion();
+            }
+        } else {
+            // 模块内：基于关键词和已收集数据生成问题
+            nextQuestion = generateModuleQuestion(
+                session.getContactName(),
+                currentModule,
+                getCompletedModules(session),
+                collectedData,
+                userMessage
+            );
+        }
         
         // 11. 更新会话
-        session.setCurrentDimension(nextDimension);
+        session.setCurrentDimension(nextModuleId);
         session.setLastQuestion(nextQuestion);
         sessionRepository.save(session);
         
@@ -266,7 +319,7 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         response.setNextQuestion(nextQuestion);
         response.setIsCompleted(shouldComplete);
         response.setProgress(progress);
-        response.setCurrentDimension(nextDimension);
+        response.setCurrentDimension(currentModule.getTitle());
         response.setIntent(extraction.getIntent().name());
         
         // 如果需要完成，添加完成相关信息
@@ -307,11 +360,12 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             session.setLastQuestion(nextQuestion);
             sessionRepository.save(session);
             
+            QuestionModule module = getModuleById(session.getCurrentDimension());
             MessageResponse response = new MessageResponse();
             response.setNextQuestion(nextQuestion);
             response.setIsCompleted(false);
             response.setProgress(calculateProgress(session));
-            response.setCurrentDimension(session.getCurrentDimension());
+            response.setCurrentDimension(module.getTitle());
             return response;
         } else {
             // 重复确认问题
@@ -434,11 +488,12 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         session.setLastQuestion(nextQuestion);
         sessionRepository.save(session);
         
+        QuestionModule module = getModuleById(nextDimension);
         MessageResponse response = new MessageResponse();
         response.setNextQuestion(nextQuestion);
         response.setIsCompleted(false);
         response.setProgress(calculateProgress(session));
-        response.setCurrentDimension(nextDimension);
+        response.setCurrentDimension(module.getTitle());
         return response;
     }
     
@@ -464,7 +519,8 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         response.setNeedsMinimumInfo(true);
         response.setMinimumInfoHint("为了创建联系人，还需要一些基本信息");
         response.setProgress(calculateProgress(session));
-        response.setCurrentDimension(session.getCurrentDimension());
+        QuestionModule module = getModuleById(session.getCurrentDimension());
+        response.setCurrentDimension(module.getTitle());
         return response;
     }
     
@@ -490,7 +546,8 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         response.setNeedsMinimumInfo(true);
         response.setMinimumInfoHint("我理解你想结束了。不过为了创建联系人，只需要再回答1-2个关键问题😊");
         response.setProgress(calculateProgress(session));
-        response.setCurrentDimension(session.getCurrentDimension());
+        QuestionModule module = getModuleById(session.getCurrentDimension());
+        response.setCurrentDimension(module.getTitle());
         return response;
     }
     
@@ -510,7 +567,8 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         response.setIsConfirmingEnd(true);
         response.setCollectedSummary(generateBriefSummary(collectedData));
         response.setProgress(calculateProgress(session));
-        response.setCurrentDimension(session.getCurrentDimension());
+        QuestionModule module = getModuleById(session.getCurrentDimension());
+        response.setCurrentDimension(module.getTitle());
         return response;
     }
     
@@ -604,11 +662,10 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     }
     
     /**
-     * 生成第一个问题
+     * 生成第一个问题（开篇介绍）- 直接返回固定文本
      */
     private String generateFirstQuestion(String contactName) {
-        String prompt = PromptTemplates.buildFirstQuestionPrompt(contactName);
-        return callDeepseek(prompt);
+        return PromptTemplates.buildFirstQuestionPrompt(contactName);
     }
     
     /**
@@ -740,7 +797,7 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     }
     
     /**
-     * 生成下一个问题
+     * 生成下一个问题（保留兼容性）
      */
     private String generateNextQuestion(
         String contactName,
@@ -749,10 +806,24 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
         Map<String, Object> collectedData,
         String lastUserMessage
     ) {
-        String prompt = PromptTemplates.buildNextQuestionPrompt(
+        QuestionModule module = getModuleById(currentDimension);
+        return generateModuleQuestion(contactName, module, completedDimensions, collectedData, lastUserMessage);
+    }
+    
+    /**
+     * 生成模块内的问题
+     */
+    private String generateModuleQuestion(
+        String contactName,
+        QuestionModule module,
+        List<String> completedModules,
+        Map<String, Object> collectedData,
+        String lastUserMessage
+    ) {
+        String prompt = PromptTemplates.buildModuleQuestionPrompt(
             contactName,
-            currentDimension,
-            completedDimensions,
+            module,
+            completedModules,
             collectedData,
             lastUserMessage
         );
@@ -1011,45 +1082,24 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     }
     
     /**
-     * 获取下一个维度（纯函数，无副作用）
-     */
-    private String getNextDimension(ConversationSession session) {
-        int currentIndex = COLLECTION_DIMENSIONS.indexOf(session.getCurrentDimension());
-        int nextIndex = currentIndex + 1;
-        
-        if (nextIndex < COLLECTION_DIMENSIONS.size()) {
-            return COLLECTION_DIMENSIONS.get(nextIndex);
-        } else {
-            return session.getCurrentDimension();  // 已经是最后一个
-        }
-    }
-    
-    /**
-     * 标记维度为完成
-     */
-    private void markDimensionCompleted(ConversationSession session, String dimension) {
-        List<String> completed = getCompletedDimensions(session);
-        if (!completed.contains(dimension)) {
-            completed.add(dimension);
-            session.setCompletedDimensions(toJson(completed));
-            log.debug("Marked dimension '{}' as completed for session {}", dimension, session.getSessionId());
-        }
-    }
-    
-    /**
      * 计算进度 - 统一进度和完成判断逻辑
      */
     private Integer calculateProgress(ConversationSession session) {
         Map<String, Object> data = parseCollectedData(session);
-        List<String> completed = getCompletedDimensions(session);
+        List<String> completed = getCompletedModules(session);
         
-        // 维度进度 (60%)
-        int dimensionProgress = (completed.size() * 60) / COLLECTION_DIMENSIONS.size();
+        // 模块进度 (60%) - 排除开篇模块
+        int moduleCount = QUESTION_MODULES.size() - 1; // 排除opening模块
+        int completedModuleCount = completed.size();
+        if (completed.contains("opening")) {
+            completedModuleCount--; // opening不计入进度
+        }
+        int moduleProgress = moduleCount > 0 ? (completedModuleCount * 60) / moduleCount : 0;
         
         // 信息质量进度 (40%)
         int qualityProgress = calculateQualityProgress(data);
         
-        return Math.min(dimensionProgress + qualityProgress, 100);
+        return Math.min(moduleProgress + qualityProgress, 100);
     }
     
     /**
@@ -1136,9 +1186,13 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             return false;
         }
         
-        // 条件3: 用户明确表示结束或者所有维度都已完成
-        List<String> completed = getCompletedDimensions(session);
-        return completed.size() >= COLLECTION_DIMENSIONS.size() || 
+        // 条件3: 用户明确表示结束或者所有模块都已完成（排除opening）
+        List<String> completed = getCompletedModules(session);
+        int completedModuleCount = completed.size();
+        if (completed.contains("opening")) {
+            completedModuleCount--; // opening不计入完成数
+        }
+        return completedModuleCount >= (QUESTION_MODULES.size() - 1) || 
                SessionStatus.CONFIRMING_END.name().equals(session.getStatus());
     }
     
@@ -1217,9 +1271,9 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
     }
     
     /**
-     * 获取已完成的维度
+     * 获取已完成的模块（兼容旧的数据结构，存储的是模块ID）
      */
-    private List<String> getCompletedDimensions(ConversationSession session) {
+    private List<String> getCompletedModules(ConversationSession session) {
         try {
             String json = session.getCompletedDimensions();
             if (json == null || json.trim().isEmpty() || "[]".equals(json)) {
@@ -1227,9 +1281,73 @@ public class InfoCollectionServiceImpl implements InfoCollectionService {
             }
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException e) {
-            log.error("Failed to parse completed dimensions", e);
+            log.error("Failed to parse completed modules", e);
             return new ArrayList<>();
         }
+    }
+    
+    /**
+     * 获取已完成的维度（保留兼容性）
+     */
+    private List<String> getCompletedDimensions(ConversationSession session) {
+        return getCompletedModules(session);
+    }
+    
+    /**
+     * 根据模块ID获取模块对象
+     */
+    private QuestionModule getModuleById(String moduleId) {
+        return QUESTION_MODULES.stream()
+                .filter(m -> m.getModuleId().equals(moduleId))
+                .findFirst()
+                .orElse(QUESTION_MODULES.get(0));
+    }
+    
+    /**
+     * 获取下一个模块
+     */
+    private String getNextModule(ConversationSession session) {
+        String currentModuleId = session.getCurrentDimension();
+        int currentIndex = -1;
+        for (int i = 0; i < QUESTION_MODULES.size(); i++) {
+            if (QUESTION_MODULES.get(i).getModuleId().equals(currentModuleId)) {
+                currentIndex = i;
+                break;
+            }
+        }
+        
+        int nextIndex = currentIndex + 1;
+        if (nextIndex < QUESTION_MODULES.size()) {
+            return QUESTION_MODULES.get(nextIndex).getModuleId();
+        } else {
+            return currentModuleId;  // 已经是最后一个
+        }
+    }
+    
+    /**
+     * 标记模块为完成
+     */
+    private void markModuleCompleted(ConversationSession session, String moduleId) {
+        List<String> completed = getCompletedModules(session);
+        if (!completed.contains(moduleId)) {
+            completed.add(moduleId);
+            session.setCompletedDimensions(toJson(completed));
+            log.debug("Marked module '{}' as completed for session {}", moduleId, session.getSessionId());
+        }
+    }
+    
+    /**
+     * 标记维度为完成（保留兼容性）
+     */
+    private void markDimensionCompleted(ConversationSession session, String dimension) {
+        markModuleCompleted(session, dimension);
+    }
+    
+    /**
+     * 获取下一个维度（保留兼容性，实际返回模块）
+     */
+    private String getNextDimension(ConversationSession session) {
+        return getNextModule(session);
     }
     
     /**

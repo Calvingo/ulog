@@ -1,5 +1,6 @@
 package com.ulog.backend.conversation.util;
 
+import com.ulog.backend.conversation.dto.QuestionModule;
 import java.util.List;
 import java.util.Map;
 
@@ -29,26 +30,16 @@ public class PromptTemplates {
         """;
     
     /**
-     * 生成第一个问题
+     * 生成第一个问题（开篇介绍）- 现在直接返回固定文本
      */
     public static String buildFirstQuestionPrompt(String contactName) {
         return String.format("""
-            你好！我们来聊聊%s吧。
+            很高兴与你共创%s的信息档案。这份问卷旨在帮助您系统地梳理与记录您对%s的了解，将感性的印象与零散的标签转化为清晰的数据画像，从而在未来辅助你与%s更默契、高效的协作与互动。
             
-            请生成第一个自然的问题，从基本信息开始了解Ta。
-            可以问年龄、职业、教育背景等。
+            现在请静心在脑海里回想一下%s的形象，自由描述一段你的印象里%s是个什么样的人？
             
-            【专业框架收集要求】
-            请严格按照以下5个系统进行信息收集：
-            
-            系统1: 基本画像系统 - 基本信息、社会角色、生活方式、社交风格、性格特质、自我价值
-            系统2: 心理与人格系统 - 核心动机、情绪模式、决策风格
-            系统3: 关系体验系统 - 互动频率、互动能量、信任水平、价值互惠、关系边界、关系母型
-            系统4: 时间与发展系统 - 关系起点、关系长度、成长趋势、临界事件、未来潜力
-            系统5: 价值与意义系统 - 角色标签、关系功能、自我影响、社交位置、投入产出
-            
-            只返回问题本身，要口语化、友好。
-            """, contactName);
+            提示：问卷使用语音输入会更加高效便捷。请根据您的真实了解与观察填写，如果不确定部分可以跳过并在未来经过观察进一步补充。
+            """, contactName, contactName, contactName, contactName, contactName);
     }
     
     /**
@@ -1034,6 +1025,184 @@ public class PromptTemplates {
                 : "（暂无描述）",
             supplementQuestion,
             supplementInfo
+        );
+    }
+
+    /**
+     * 构建关系分析提示词
+     * 基于双方信息分析两人关系的现状，从7个科学维度进行深度分析
+     */
+    public static String buildRelationshipAnalysisPrompt(
+            String contactDescription,
+            String contactSelfValue,
+            String userDescription,
+            String userSelfValue
+    ) {
+        return String.format("""
+            【任务】你是关系分析专家，请基于双方信息分析两人关系的现状，从7个科学维度进行深度分析。
+            
+            【联系人信息】
+            描述：%s
+            自我价值评分（1-5分，5分为最高）：
+            - 自尊：%s/5.0
+            - 自我接纳：%s/5.0
+            - 自我效能：%s/5.0
+            - 存在价值感：%s/5.0
+            - 自我一致性：%s/5.0
+            
+            【用户信息】
+            描述：%s
+            自我价值评分（1-5分，5分为最高）：
+            - 自尊：%s/5.0
+            - 自我接纳：%s/5.0
+            - 自我效能：%s/5.0
+            - 存在价值感：%s/5.0
+            - 自我一致性：%s/5.0
+            
+            【分析要求】
+            请从以下7个维度进行专业分析，每个维度包含：当前状态评估、具体表现分析：
+            
+            ### 1. 沟通开放性 (Communication Openness)
+            - 评估：双方是否能表达真实想法、是否倾听对方、不防御、可讨论敏感话题
+            
+            ### 2. 情感亲密度 (Emotional Intimacy)
+            - 评估：主动分享情绪、脆弱自我披露、情绪靠近、共情回应程度
+            
+            ### 3. 冲突建设性 (Constructive Conflict)
+            - 评估：冲突时语气控制、是否攻击、是否能和解、负面情绪恢复速度
+            
+            ### 4. 信任可靠性 (Trust Reliability)
+            - 评估：承诺兑现率、透明度、隐瞒/欺骗倾向、诚实反馈
+            
+            ### 5. 目标一致性 (Goal Alignment)
+            - 评估：价值观/目标重叠度、未来规划协同度、冲突议题一致化
+            
+            ### 6. 空间平衡性 (Space Balance)
+            - 评估：是否能自由支配时间、不过度依赖、边界被尊重程度
+            
+            ### 7. 支持有效性 (Support Effectiveness)
+            - 评估：提供的帮助是否满足需求、回应及时性、情感安抚质量
+            
+            【输出要求】
+            - 每个维度单独成段，用###标记
+            - 包含状态评估和具体表现分析
+            - 语言专业但易懂
+            - 控制在800-1200字
+            """,
+            contactDescription != null ? contactDescription : "（无描述）",
+            parseSelfValueForPrompt(contactSelfValue, 0),
+            parseSelfValueForPrompt(contactSelfValue, 1),
+            parseSelfValueForPrompt(contactSelfValue, 2),
+            parseSelfValueForPrompt(contactSelfValue, 3),
+            parseSelfValueForPrompt(contactSelfValue, 4),
+            userDescription != null ? userDescription : "（无描述）",
+            parseSelfValueForPrompt(userSelfValue, 0),
+            parseSelfValueForPrompt(userSelfValue, 1),
+            parseSelfValueForPrompt(userSelfValue, 2),
+            parseSelfValueForPrompt(userSelfValue, 3),
+            parseSelfValueForPrompt(userSelfValue, 4)
+        );
+    }
+
+    /**
+     * 构建交往建议提示词
+     * 基于联系人的描述信息，生成可操作的交往建议
+     */
+    public static String buildInteractionSuggestionsPrompt(String contactDescription) {
+        return String.format("""
+            【任务】你是人际关系顾问，请基于联系人的描述信息，生成可操作的交往建议。
+            
+            【联系人信息】
+            %s
+            
+            【分析要求】
+            请从以下维度分析并生成具体建议：
+            
+            ### 1. 行为倾向推断
+            基于描述推断该联系人的行为模式和习惯
+            
+            ### 2. 情绪与价值观暗示
+            分析其情绪特点和核心价值观
+            
+            ### 3. 潜在需求推理
+            推测对方可能的未表达需求
+            
+            ### 4. 可能的禁忌雷区
+            识别需要避免的话题或行为
+            
+            ### 5. 人际关系机会点
+            发现可以深化关系的切入点
+            
+            ### 6. 快乐清单
+            总结让对方开心/舒适的事项
+            
+            ### 7. 雷点清单
+            总结需要避免的敏感点
+            
+            ### 8. 关键时间点
+            识别重要的时间节点（生日、纪念日等），如果没有明确信息则不编造
+            
+            【输出要求】
+            - 每个维度单独成段，用###标记
+            - 建议要具体可操作，不要空泛
+            - 语言友好实用
+            - 控制在600-1000字
+            - 没有信息的维度可以标注"信息不足"
+            """,
+            contactDescription != null && !contactDescription.trim().isEmpty() 
+                ? contactDescription 
+                : "（无描述信息）"
+        );
+    }
+    
+    /**
+     * 生成模块内问题的Prompt（基于固定模块的关键词）
+     */
+    public static String buildModuleQuestionPrompt(
+        String contactName,
+        QuestionModule module,
+        List<String> completedModules,
+        Map<String, Object> collectedData,
+        String lastUserMessage
+    ) {
+        String keywordsText = module.getKeywords().isEmpty() 
+            ? "无特定关键词" 
+            : String.join("、", module.getKeywords());
+        
+        return String.format("""
+            当前任务：收集关于"%s"的信息
+            
+            当前模块：%s
+            已完成模块：%s
+            已收集信息：
+            %s
+            
+            用户上一次回答：%s
+            
+            【模块信息】
+            模块标题：%s
+            模块关键词：%s
+            
+            【问题生成要求】
+            - 基于当前模块的关键词和已收集的信息，生成一个自然的问题
+            - 问题要针对模块的关键词，但不要生硬地直接问
+            - 避免重复询问已经收集到的信息
+            - 问题要口语化、友好、简短
+            - 只返回问题本身，不要其他内容
+            
+            【关键词提示】
+            当前模块关注的关键词包括：%s
+            
+            请基于这些关键词，结合已收集的信息，生成一个合适的跟进问题。
+            """,
+            contactName,
+            module.getTitle(),
+            completedModules.isEmpty() ? "无" : String.join(", ", completedModules),
+            formatCollectedData(collectedData),
+            lastUserMessage,
+            module.getTitle(),
+            keywordsText,
+            keywordsText
         );
     }
 }

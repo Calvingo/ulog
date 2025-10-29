@@ -20,9 +20,10 @@ public class GoalAiService {
         this.objectMapper = objectMapper;
     }
 
-    public Mono<AiGoalStrategyResponse> generateGoalStrategy(String contactInfo, String userInfo, String goalDescription) {
+    public Mono<AiGoalStrategyResponse> generateGoalStrategy(String contactName, String userName, 
+                                                           String relationshipAnalysis, String goalDescription) {
         String systemPrompt = buildSystemPrompt();
-        String userPrompt = buildUserPrompt(contactInfo, userInfo, goalDescription);
+        String userPrompt = buildUserPrompt(contactName, userName, relationshipAnalysis, goalDescription);
 
         return deepseekService.askReasoner(systemPrompt, userPrompt)
             .map(this::parseAiResponse)
@@ -57,22 +58,24 @@ public class GoalAiService {
                "请确保返回的是纯JSON格式，不要包含任何其他文字说明。";
     }
 
-    private String buildUserPrompt(String contactInfo, String userInfo, String goalDescription) {
+    private String buildUserPrompt(String contactName, String userName, String relationshipAnalysis, String goalDescription) {
         StringBuilder prompt = new StringBuilder();
         
-        prompt.append("联系人信息：\n");
-        prompt.append(contactInfo != null ? contactInfo : "无");
-        prompt.append("\n\n");
+        prompt.append("联系人姓名：").append(contactName != null ? contactName : "未知").append("\n");
+        prompt.append("我的姓名：").append(userName != null ? userName : "未知").append("\n\n");
         
-        prompt.append("我的信息：\n");
-        prompt.append(userInfo != null ? userInfo : "无");
-        prompt.append("\n\n");
+        // 添加关系分析
+        if (relationshipAnalysis != null && !relationshipAnalysis.trim().isEmpty()) {
+            prompt.append("关系分析：\n");
+            prompt.append(relationshipAnalysis);
+            prompt.append("\n\n");
+        }
         
         prompt.append("我的关系目标：\n");
         prompt.append(goalDescription);
         prompt.append("\n\n");
         
-        prompt.append("请基于以上双方的信息和我的目标，为我生成个性化的策略和行动计划。");
+        prompt.append("请基于以上信息，为我生成个性化的策略和行动计划。");
         return prompt.toString();
     }
 

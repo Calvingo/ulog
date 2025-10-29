@@ -36,8 +36,11 @@ public class Contact {
     @Column(name = "self_value", length = 50)
     private String selfValue;
 
-    @Column(name = "ai_summary", length = 2048)
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
     private String aiSummary;
+
+    @Column(name = "interaction_suggestions", columnDefinition = "TEXT")
+    private String interactionSuggestions;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -111,6 +114,14 @@ public class Contact {
 
     public void setAiSummary(String aiSummary) {
         this.aiSummary = aiSummary;
+    }
+
+    public String getInteractionSuggestions() {
+        return interactionSuggestions;
+    }
+
+    public void setInteractionSuggestions(String interactionSuggestions) {
+        this.interactionSuggestions = interactionSuggestions;
     }
 
     public LocalDateTime getCreatedAt() {
